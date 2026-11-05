@@ -11,6 +11,7 @@ import { PatientDetailPage } from './pages/PatientDetailPage';
 import { PatientsPage } from './pages/PatientsPage';
 import { PatientStratificationPage } from './pages/PatientStratificationPage';
 import { ProjectPage } from './pages/ProjectPage';
+import { QualityPage } from './pages/QualityPage';
 import { QuestionnaireFormPage } from './pages/QuestionnaireFormPage';
 import { QuestionnairesPage } from './pages/QuestionnairesPage';
 import { SetPasswordPage } from './pages/SetPasswordPage';
@@ -39,6 +40,7 @@ export const router = createHashRouter([
       // Exportación: incluye xlsx; solo se carga al entrar.
       { path: '/export', lazy: async () => ({ Component: (await import('./pages/ExportPage')).ExportPage }) },
       { path: '/admin', element: <AdminPage /> },
+      { path: '/quality', element: <QualityPage /> },
       { path: '/project', element: <ProjectPage /> },
     ],
   },
