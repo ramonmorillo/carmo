@@ -4,7 +4,9 @@ Ningún punto se da por cumplido sin evidencia (documento, acta o resultado de p
 
 ## A. Regulatorio y documental (CARMO_REGULATORY_GAPS)
 
-- [ ] RG-01 Versión del protocolo aprobada, conciliada con el dictamen.
+- [ ] RG-01 Dictamen de la modificación que cubre el protocolo v3.0 y la HIP/CI v3.0 (el dictamen aportado cubre la v2.0 y la HIP/CI v1.0).
+- [ ] RG-31 Cobertura ética y conformidad o contrato de cada centro, antes de autorizarlo.
+- [ ] RG-33 Situación del reclutamiento: ¿hay pacientes ya incluidos en REDCap? Plan de migración o enmienda del calendario.
 - [ ] RG-02 Sustitución de REDCap por CARMO valorada por el promotor; modificación o notificación al CEIm resuelta; HIP/CI coherente.
 - [ ] RG-03 Cambio en el equipo comunicado según el procedimiento.
 - [ ] RG-09 EIPD, base jurídica, contrato de encargo con Supabase e informe del DPD que cubran el proyecto compartido.
@@ -14,7 +16,17 @@ Ningún punto se da por cumplido sin evidencia (documento, acta o resultado de p
 ## B. Contenido científico
 
 - [ ] Protocolo transcrito: diccionario con página de origen en cada variable; `carmo_variables.status = 'validated'`.
-- [ ] Criterios de selección cargados y activados (`carmo_eligibility_sets`), validados por la coordinación.
+- [ ] Criterios de selección `CARMO-SEL-P3.0` (borrador) confirmados frente a la versión aprobada y activados:
+  ```sql
+  update public.carmo_eligibility_sets set status = 'active', validated_by = 'Nombre (coordinación)', validated_at = current_date
+   where version = 'CARMO-SEL-P3.0';
+  ```
+- [ ] Cada centro autorizado (código de 3 cifras; reutilizar el de REDCap si existe):
+  ```sql
+  update public.carmo_centers set study_number = 1, participation_status = 'authorized',
+         authorization_reference = 'Dictamen CEIm-G 2025/330 …; conformidad del centro …', is_active = true, activated_at = current_date
+   where code = 'CHUS';
+  ```
 - [ ] Calendario `validated` (ventanas S12-S48; relación S48/FINAL).
 - [ ] Instrumentos: versión, licencia y puntuación de EQ-5D, EVASAF y Morisky-Green; textos autorizados para administración electrónica, si procede.
 - [ ] Modelo CMO cardiovascular oficial cargado, con pruebas de equivalencia frente a casos de referencia del documento, y `validated`.

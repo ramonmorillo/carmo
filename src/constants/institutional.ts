@@ -1,8 +1,8 @@
-// Identidad institucional de CARMO. Fuente: datos del protocolo y del dictamen comunicados por el IP
-// en el encargo de desarrollo (05/11/2026). Los documentos originales NO se publican en este
-// repositorio (público). Ver docs/CARMO_REGULATORY_GAPS.md para las discrepancias pendientes:
-//   · el dictamen menciona una versión documental distinta de la v3.0 del protocolo (RG-01);
-//   · el protocolo prevé REDCap como eCRD (RG-02);
+// Identidad institucional de CARMO. Fuentes: dictamen del CEIm-G (firmado 15/09/2025) y protocolo
+// v3.0 (12/09/2025), aportados por el IP. Los documentos originales NO se publican en este repositorio
+// (público; el protocolo es confidencial). Discrepancias en docs/CARMO_REGULATORY_GAPS.md:
+//   · el dictamen aprueba el protocolo v2.0 y la HIP/CI v1.0, no la v3.0 (RG-01);
+//   · el dictamen solo cita 2 centros (RG-31); el protocolo prevé REDCap como eCRD (RG-02);
 //   · cambio de coordinación no aprobado formalmente (RG-03).
 // No completar con datos no verificados.
 
@@ -30,14 +30,14 @@ export const PROJECT_INSTITUTIONAL_REFERENCE: {
   protocolCode: 'FEF-CARMO-2025',
   sponsor: 'Fundación Española de Farmacia Hospitalaria',
   toolScientificCoordination: 'Ramón Alejandro Morillo Verdugo',
-  ethicsCommittee: 'CEIm de Galicia',
+  ethicsCommittee: 'CEIm de Galicia (CEIm-G)',
   ethicsApprovalCode: '2025/330',
-  ethicsApprovalDate: null,
-  ethicsDecision: 'Dictamen favorable',
+  ethicsApprovalDate: '2025-07-24',
+  ethicsDecision: 'Informe favorable',
   protocolVersion: 'Protocolo versión 3.0, 12/09/2025',
   approvedDocumentVersionNote:
-    'El dictamen identifica una versión documental distinta de la v3.0: pendiente de conciliar con promotor y CEIm.',
-  informedConsentVersion: null,
+    'El dictamen (reunión 24/07/2025, firmado 15/09/2025) aprueba el protocolo v2.0 de 18/08/2025 y la HIP/CI v1.0 de 17/06/2025, con los centros C.H.U. de A Coruña y C.H.U. de Santiago. La v3.0 y los demás centros requieren constancia de su aprobación.',
+  informedConsentVersion: 'HIP/CI v1.0 de 17/06/2025 (aprobada); v3.0 de 12/09/2025 (protocolo vigente)',
 };
 
 export const PENDING_LABEL = 'Pendiente de verificar';

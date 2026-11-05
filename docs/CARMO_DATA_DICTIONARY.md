@@ -1,116 +1,119 @@
 # CARMO · Diccionario de datos del eCRD
 
-**Versión del diccionario: 0.1-provisional · 05/11/2026**
+**Versión del diccionario: 0.2-provisional · 05/11/2026**
 
-**Fuente: resumen del protocolo incluido en el encargo de desarrollo.** El protocolo v3.0 no estaba disponible (RG-01, RG-23), así que la columna «Página» queda como `pendiente` en todas las filas. Al recibir el protocolo, cada fila se verifica y pasa de `provisional` a `validated` en `carmo_variables` (con `definition_version` + 1 si cambia la definición).
+**Fuente:** protocolo **v3.0** de 12/09/2025, aportado por el IP. La versión aprobada por el CEIm-G es la **v2.0** (RG-01): cada variable sigue en estado `provisional` en `carmo_variables` hasta que la coordinación la concilie con la v2.0 y la valide (`status = 'validated'`; `definition_version` + 1 si cambia).
 
-Regla del encargo: ninguna variable se omite en silencio. Cada variable mencionada en el encargo aparece aquí con uno de estos estados:
+Las páginas son las del **índice** del protocolo (el `.docx` no tiene paginación fija). Las secciones son:
 
-- **IMPL**: implementada, pendiente de verificación;
-- **BLOQ**: existe, pero no admite datos (falta el dominio);
-- **NO-IMPL**: no implementada; se indica el motivo;
-- **EXT-TÉC**: extensión técnica de la plataforma, no es variable del protocolo.
+- «Criterios» (p. 9 y p. 17);
+- «Valoración de los objetivos» (VO, p. 14);
+- «Procedimiento del estudio» / «Esquema de procedimientos» (EP, p. 12-13);
+- «Inclusión y asignación del código» (p. 18).
+
+Estados de cada variable:
+
+- **IMPL**: implementada y pendiente de validar;
+- **BLOQ**: existe, pero no admite datos;
+- **NO-IMPL**: no implementada, con el motivo;
+- **EXT-TÉC**: extensión técnica de la plataforma.
+
+Ninguna variable se omite en silencio.
 
 ## 1. Selección, inclusión y estado del sujeto
 
-| Variable | Tabla.columna | Tipo / dominio | Oblig. | Momento | Estado | Notas |
-|---|---|---|---|---|---|---|
-| Código seudonimizado | `carmo_patients.study_code` | `CARMO-NN-NNNN` (asignado por la BD) | Sí | Cribado | IMPL | Inmutable |
-| Centro | `carmo_patients.center_id` | FK, centro autorizado y activo | Sí | Cribado | IMPL | Inmutable |
-| Fecha de cribado | `carmo_patients.screening_date` | fecha ≤ hoy | Sí | Cribado | IMPL | |
-| Resultado del cribado | `carmo_patients.status` | screening / included / not_included | Sí | Cribado | IMPL | |
-| Motivo de no inclusión | `carmo_patients.status_reason` | lista provisional (RG-12) | Si no incluido | Cribado | IMPL | |
-| Criterios de inclusión y exclusión | `carmo_eligibility_criteria` + `carmo_eligibility_answers.is_met` | sí/no por criterio, versionado | Todos | Cribado | **BLOQ** | Sin conjunto activo, la inclusión es imposible (RG-06) |
-| Verificación en la fuente | `carmo_eligibility_answers.verified_in_source` | booleano | — | Cribado | EXT-TÉC | |
-| Consentimiento firmado | `carmo_consents` (status `signed`) | registro | Sí | Antes de incluir | IMPL | El documento físico se queda en el centro |
-| Versión documental del consentimiento | `carmo_consents.document_version` | texto ≤ 80 | Sí | — | IMPL | RG-13 |
-| Fecha de consentimiento | `carmo_consents.signed_date` | fecha ≤ hoy | Sí | — | IMPL | |
-| Investigador responsable | `carmo_consents.investigator_id`, `carmo_patients.responsible_investigator_id` | profesional vigente del centro | Sí | — | IMPL | |
-| Fecha de inclusión | `carmo_patients.inclusion_date` | la fija la BD al incluir | Sí | Inclusión | IMPL | |
-| Retirada del consentimiento | `carmo_consents.withdrawal_date`, `withdrawal_scope` | fecha; alcance pendiente (RG-10) | Si procede | — | IMPL | |
-| Salida del estudio | `carmo_patients.status` withdrawn / lost_to_followup / completed + motivo | — | Si procede | — | IMPL | `completed` exige visita final realizada |
-| Datos sintéticos | `carmo_patients.is_synthetic` | lo fija la BD | — | — | EXT-TÉC | |
+| Variable | Fuente | Tabla.columna | Tipo / dominio | Oblig. | Estado |
+|---|---|---|---|---|---|
+| Código de selección | EXT-TÉC | `carmo_patients.screening_code` | `SEL-CCC-NNN` (BD) | Sí | EXT-TÉC |
+| **Código de paciente** | p. 18 | `carmo_patients.study_code` | `CCC-PP`: centro 3 cifras + 2 cifras consecutivas por orden de inclusión (BD, al incluir) | Al incluir | IMPL (RG-35) |
+| Centro | p. 6 / 15 | `center_id` | Centro autorizado y activo (RG-31) | Sí | IMPL |
+| Fecha de selección | EXT-TÉC | `screening_date` | ≤ hoy | Sí | IMPL |
+| Criterios de inclusión INC01-INC04 y exclusión EXC01-EXC02 | p. 9 y 17 | `carmo_eligibility_*` (`CARMO-SEL-P3.0`) | Sí/no por criterio; versionado | Todos | **BLOQ** hasta activar el borrador (RG-06) |
+| Constancia en la historia clínica | p. 17 | `verified_in_source` | Booleano | — | IMPL |
+| Consentimiento firmado | p. 12 y 17 | `carmo_consents` | Versión de la HIP/CI, fecha, investigador | Sí | IMPL |
+| **Destino de los datos al terminar** (CI) | HIP/CI v3.0 | `future_use_choice` | Eliminados / conservados seudonimizados | Sí (si consta) | IMPL |
+| Fecha de inclusión | p. 9 («día de inclusión» = visita inicial) | `inclusion_date` | La fija la BD | Sí | IMPL |
+| No inclusión y motivo | — | `status`, `status_reason` | Lista provisional (RG-12) | — | IMPL |
+| Retirada del consentimiento y salida | HIP/CI | `carmo_consents.withdrawal_*`, `carmo_patients.status` | — | — | IMPL (RG-10) |
+| Población por intención de tratar y por protocolo | p. 20 | Derivadas en la exportación (`pob_itt`, `pob_pp`) | — | — | IMPL |
 
-## 2. Visitas
+## 2. Visitas (calendario `CARMO-CAL-0.2`, EP)
 
-| Variable | Tabla.columna | Dominio | Estado |
+| Visita | Momento (desde la inclusión) | Ventana | Procedimientos del protocolo |
 |---|---|---|---|
-| Tipo de visita | `carmo_visits.visit_code` | BASAL, S12, S24, S36, S48, FINAL, EXTRA | IMPL (RG-04/05) |
-| Fecha prevista | `planned_date` | calendario versionado | IMPL |
-| Fecha efectiva | `actual_date` | ≤ hoy, ≥ inclusión | IMPL |
-| Estado | `status` | prevista / realizada / no realizada / anulada | IMPL |
-| Modalidad | `modality` | presencial / telefónica | IMPL |
-| Profesional responsable | `responsible_id` | profesional del centro | IMPL |
-| Estado del registro | `record_state` | borrador / revisada / cerrada | EXT-TÉC |
-| Ventana | vista `carmo_visit_windows` | en ventana / fuera / no definida | IMPL (derivada) |
-| Evolución clínica | `carmo_visit_evolutions.clinical_evolution` | texto ≤ 4000 | IMPL |
-| Actualización farmacoterapéutica | `pharmacotherapy_update` | texto | IMPL |
-| Seguimiento motivacional | `motivational_followup` | texto | IMPL |
-| Problemas relacionados con medicamentos | `drp_identified`, `drp_description` | sí/no + texto | IMPL (RG-15) |
-| Incidencias y desviaciones | `carmo_deviations` | categoría técnica + texto | IMPL |
-| Reestratificaciones | `carmo_stratifications` (`supersedes_id`) | — | **BLOQ** (RG-21) |
+| BASAL: visita inicial | Día 0 (S 1-4) | 0-27 d | Consentimiento; historia farmacoterapéutica; parámetros clínicos y analíticos; estratificación; IEXPAC; EVASAF; adherencia; EQ-5D |
+| S12 (V1), S36 (V3) | 84 y 252 d | No definida | Teleconsultas o consultas programadas; intervenciones según prioridad |
+| S24 (V2) | 168 d | No definida | Lo anterior + **valoración de la adherencia** |
+| FINAL: fin de estudio | 365 d | ±28 d | Historia farmacoterapéutica; parámetros; IEXPAC (evaluador externo); EVASAF; adherencia; EQ-5D |
+| EXTRA | Cuando se necesite | — | Teleconsultas o consultas **no programadas** |
 
-## 3. Variables clínicas (`carmo_variables` → `carmo_observations`)
+Por cada visita se registran: fecha prevista y efectiva, estado, modalidad (presencial o telefónica), profesional responsable, estado del registro (EXT-TÉC), evolución clínica, actualización farmacoterapéutica, seguimiento motivacional, PRM, incidencias y desviaciones. RG-05: S48 frente a 12 meses.
 
-Cada observación lleva: valor tipado, unidad, `observed_date`, `data_source` (origen) y `temporal_context` (antecedente previo a la inclusión, basal, seguimiento o evento incidente). Además, `is_missing` + `missing_reason`. Las correcciones se registran con `supersedes_id` + `correction_reason`.
+## 3. Variables clínicas (`carmo_variables` → `carmo_observations`, fuente VO salvo indicación)
 
-| Código | Variable | Sección | Tipo | Unidad | Rango | Contextos admitidos | Estado |
-|---|---|---|---|---|---|---|---|
-| `familial_hypercholesterolemia` | Hipercolesterolemia familiar | Antecedentes CV | sí/no | — | — | antecedente, basal | IMPL (criterio diagnóstico no especificado) |
-| `secondary_prevention` | Prevención secundaria CV | Antecedentes CV | sí/no | — | — | basal, seguimiento | IMPL (definición operativa pendiente) |
-| `weight` | Peso | Antropometría | numérico | kg | 20-350 | basal, seguimiento | IMPL |
-| `height` | Talla | Antropometría | numérico | cm | 100-230 | basal, seguimiento | IMPL |
-| (derivada) | IMC | Antropometría | numérico | kg/m² | — | — | IMPL, se calcula y no se almacena: peso / (talla/100)² |
-| `smoking` | Tabaquismo | Factores de riesgo | categórica | — | **dominio no definido** | basal, seguimiento | **BLOQ** (RG-23) |
-| `diabetes` | Diabetes | Factores de riesgo | sí/no | — | — | basal, seguimiento | IMPL (tipo no especificado) |
-| `hypertension` | Hipertensión | Factores de riesgo | sí/no | — | — | basal, seguimiento | IMPL |
-| `ldl_c` | LDL-c | Analítica | numérico | mg/dL o mmol/L | 0-1000 | basal, seguimiento | IMPL (método no especificado; sin conversión) |
-| `non_hdl_c` | Colesterol no-HDL | Analítica | numérico | mg/dL o mmol/L | 0-1500 | basal, seguimiento | IMPL (medido o derivado: pendiente) |
-| `acs` | Síndrome coronario agudo | Eventos CV | sí/no + fecha | — | — | antecedente, evento incidente | IMPL |
-| `ami` | Infarto agudo de miocardio | Eventos CV | sí/no + fecha | — | — | antecedente, evento incidente | IMPL |
-| `unstable_angina` | Angina inestable | Eventos CV | sí/no + fecha | — | — | antecedente, evento incidente | IMPL |
-| `chronic_coronary_disease` | Enfermedad coronaria crónica | Antecedentes CV | sí/no | — | — | antecedente, basal | IMPL |
-| `ischemic_stroke` | Ictus isquémico | Eventos CV | sí/no + fecha | — | — | antecedente, evento incidente | IMPL |
-| `tia` | Accidente isquémico transitorio | Eventos CV | sí/no + fecha | — | — | antecedente, evento incidente | IMPL |
-| `coronary_revascularization` | Revascularización coronaria | Eventos CV | sí/no + fecha | — | — | antecedente, evento incidente | IMPL |
-| `other_arterial_revascularization` | Revascularización de otras arterias | Eventos CV | sí/no + fecha | — | — | antecedente, evento incidente | IMPL (territorio no especificado) |
-| `peripheral_artery_disease` | Enfermedad arterial periférica | Antecedentes CV | sí/no | — | — | antecedente, basal | IMPL |
-| — | Datos demográficos (edad, sexo…) | Demográfica | — | — | — | — | **NO-IMPL**: el encargo no los detalla (RG-23) |
-| — | Datos sociosanitarios | Sociosanitaria | — | — | — | — | **NO-IMPL** (RG-23) |
-| — | Otros parámetros clínicos y analíticos del protocolo | — | — | — | — | — | **NO-IMPL**: pendientes de transcribir |
+Cada observación lleva: valor tipado, unidad, `observed_date`, `data_source`, `temporal_context` (antecedente previo a la inclusión, basal, seguimiento o evento incidente), ausencia explícita con motivo y corrección por sustitución con motivo.
 
-Reglas de la BD: no se admiten fechas futuras; un evento incidente no puede ser anterior a la inclusión y un antecedente no puede ser posterior. Unidad y rango obligatorios en las variables numéricas. Solo se admite el tipo declarado. No se escribe en visitas cerradas ni anuladas.
+| Código | Variable (protocolo) | Tipo | Unidad / dominio | Visitas | Estado |
+|---|---|---|---|---|---|
+| `age_years` | Edad | Entero | Años, 18-120 | BASAL | IMPL (RG-38) |
+| `sex` | Sexo | Categórica | M / F / desconocido | BASAL | IMPL |
+| `weight` | Peso | Numérica | kg, 20-350 | BASAL, FINAL | IMPL |
+| `height` | Altura | Numérica | cm, 100-230 | BASAL, FINAL | IMPL |
+| (derivada) | Índice de masa corporal | Numérica | kg/m² = peso / (altura/100)² | — | IMPL (exportación) |
+| `education_level` | Nivel de estudios | Categórica | Sin estudios / primaria / secundaria / superiores | BASAL | IMPL |
+| `occupation` | Profesión | Texto libre | — | BASAL | IMPL (aviso de no identificar) |
+| `familial_hypercholesterolemia`, `secondary_prevention` | Patología (HCF y/o prevención secundaria) | 2 × sí/no | — | BASAL | IMPL (RG-39) |
+| `family_support` | Soporte familiar disponible | Sí/no | — | BASAL, FINAL | IMPL |
+| `tobacco_use` | Hábito tabáquico: consumo de tabaco | Sí/no | — | BASAL, FINAL | IMPL |
+| `cigarettes_per_day` | Número de cigarrillos diarios | Entero | cig/día, 0-200 | BASAL, FINAL | IMPL |
+| `smoking_years` | Años fumando | Entero | años, 0-90 | BASAL, FINAL | IMPL |
+| `years_since_quitting` | Años sin fumar | Entero | años, 0-90 | BASAL, FINAL | IMPL |
+| `diabetes` | Diabetes | Sí/no | — | BASAL, FINAL | IMPL |
+| `hypertension` | Hipertensión | Sí/no | — | BASAL, FINAL | IMPL |
+| `ldl_c` | LDL-c | Numérica | mg/dL o mmol/L (sin conversión) | BASAL, FINAL | IMPL (método y unidad: RG-23) |
+| `non_hdl_c` | Colesterol no-HDL | Numérica | mg/dL o mmol/L | BASAL, FINAL | IMPL |
+| `acs` | Síndrome coronario agudo | Sí/no + fecha | Antecedente / incidente | Todas | IMPL |
+| `ami` | IAM | Sí/no + fecha | Ídem | Todas | IMPL |
+| `unstable_angina` | Angina inestable | Sí/no + fecha | Ídem | Todas | IMPL |
+| `chronic_coronary_disease` | Enfermedad coronaria crónica | Sí/no + fecha | Ídem | Todas | IMPL |
+| `ischemic_stroke` | Ictus isquémico | Sí/no + fecha | Ídem | Todas | IMPL |
+| `tia` | AIT | Sí/no + fecha | Ídem | Todas | IMPL |
+| `coronary_revascularization` | Revascularización coronaria | Sí/no + fecha | Ídem | Todas | IMPL |
+| `other_arterial_revascularization` | Revascularización de otras arterias | Sí/no + fecha | Ídem | Todas | IMPL |
+| `peripheral_artery_disease` | Enfermedad arterial periférica | Sí/no + fecha | Ídem | Todas | IMPL |
+| `naive_patient` | Paciente naïve (variable exploratoria; «Diseño», p. 8) | Sí/no | — | BASAL | IMPL, **definición pendiente** (RG-39) |
+| — | Variables del modelo CMO (tablas 1-4: demográficas, clínicas, farmacoterapéuticas, sociosanitarias) | — | — | BASAL (+ reestratificación) | **NO-IMPL**: pendiente del documento CMO (RG-21) |
 
 ## 4. Tratamiento farmacológico
 
 | Variable | Tabla.columna | Estado |
 |---|---|---|
-| Principio activo (alirocumab, evolocumab, inclisirán, evinacumab, o concomitante libre) | `carmo_treatments.active_ingredient`; `is_study_lipid_therapy` (derivada) | IMPL |
-| Presentación, dosis, unidad, posología, vía | `presentation`, `dose_amount`, `dose_unit`, `frequency`, `route` | IMPL |
-| Inicio y fin; activo/suspendido/finalizado | `start_date`, `end_date`, `status` (actualizados solo por eventos) | IMPL |
-| Iniciado antes de la inclusión | `started_before_inclusion` (derivada) | EXT-TÉC |
-| Modificaciones, motivo, incidencias, reacciones adversas | `carmo_treatment_events` (solo-adición) | IMPL |
-| Dispensaciones (fecha, unidades, días de cobertura) | `carmo_dispensations` | IMPL |
-| Adherencia por dispensación | — | **NO-IMPL** (RG-20) |
-| Adherencia autorreferida (Morisky-Green) | `carmo_questionnaire_administrations` | **BLOQ** (RG-18) |
+| Medicamento de uso hospitalario del estudio (alirocumab, evolocumab, inclisirán, evinacumab) o concomitante | `carmo_treatments.active_ingredient`, `is_study_lipid_therapy` | IMPL |
+| Presentación, posología, vía, inicio, fin, estado | Columnas homónimas (actualizadas por eventos) | IMPL |
+| Modificaciones, motivo, incidencias, RAM | `carmo_treatment_events` | IMPL |
+| Revisión de la historia farmacoterapéutica (BASAL, FINAL) | Evolución de la visita (`pharmacotherapy_update`) | IMPL |
+| Registro de dispensaciones | `carmo_dispensations` | IMPL |
+| Adherencia por dispensación (tratamiento hospitalario y no hospitalario) | — | **NO-IMPL** (RG-20) |
 
 ## 5. Cuestionarios
 
-| Instrumento | Ítems / dominio | Resultado | Visitas | Estado |
-|---|---|---|---|---|
-| IEXPAC | 11 ítems, códigos 1-5 | `scores.sum` (11-55) y `scores.global` = 10 × (Σ − 11) / 44, solo con 11 ítems | BASAL, FINAL | IMPL (RG-19) |
-| EQ-5D-3L / 5L | 5 dimensiones + EVA 0-100 | Perfil; **sin índice** | BASAL, FINAL | **BLOQ** (RG-16) |
-| EVASAF | pendiente | pendiente | BASAL, FINAL | **BLOQ** (RG-17) |
-| Morisky-Green | pendiente | pendiente | todas | **BLOQ** (RG-18) |
+| Instrumento | Definición del protocolo | Visitas | Estado |
+|---|---|---|---|
+| IEXPAC | 11 ítems; Siempre = 5 … Nunca = 1; global = 10 × (Σ − 11) / 44 (0-10); final por evaluador externo | BASAL, FINAL | IMPL (condicional: NO-IMPL, RG-19; evaluador: RG-32) |
+| EuroQoL-5D | 5 dimensiones (movilidad, cuidado personal, actividades cotidianas, dolor/malestar, ansiedad/depresión) + EVA 0-100 | BASAL, FINAL | **BLOQ** (3L o 5L, RG-16) |
+| EVASAF | Farm Hosp 2015;39(3), «ADJUNTO» | BASAL, FINAL | **BLOQ** (RG-17) |
+| Morisky-Green | «(%)» de adherencia | BASAL, S24, FINAL | **BLOQ** (RG-40) |
 
-Metadatos de cada administración (EXT-TÉC): estado, motivo de no realización, modalidad, soporte, fecha, evaluador y rol (fijados por la BD), versión, revisión, motivo de corrección. Se impiden los duplicados con `unique(visit_id, instrument_code)`.
+Metadatos (EXT-TÉC): estado, motivo de no realización, modalidad, soporte, fecha, evaluador, rol, **conformidad del evaluador**, versión, revisión, motivo de corrección. Un solo registro por instrumento y visita.
 
-## 6. Estratificación CMO e intervenciones
+## 6. CMO e intervenciones
 
-Estado: **BLOQ** (RG-21, RG-22). Estructura: `carmo_cmo_models` (definición versionada con huella SHA-256), `carmo_stratifications` (entradas, desglose, puntuación, prioridad, justificación, autor, fecha, versión del motor y del modelo, validación profesional, reestratificación), `carmo_intervention_catalog` y `carmo_interventions` (fecha, programada, modalidad, categoría, dominio CMO, motivo, actuación, destinatario, aceptación, resultado, seguimiento, responsable).
+**BLOQ** hasta recibir el documento «Adaptación del Modelo de AF CMO al paciente con patología cardiovascular» (apartados II-V del módulo de capacidad: tablas 1-4 de estratificación y tablas 5-7 de actuaciones por prioridad; módulos de motivación y oportunidad).
 
-## 7. Codificación de datos ausentes
+Intervenciones previstas por el protocolo: número y tipo; programadas o no programadas; presencial o no presencial (telefónica); taxonomía del modelo.
 
-- La celda vacía en la exportación significa «no registrado».
-- La ausencia explícita en el eCRD se registra con `is_missing = true` + `missing_reason`: no_realizado, no_disponible, no_aplica, desconocido o rechazado.
-- No se imputa nunca.
+## 7. Datos ausentes (protocolo, p. 20)
+
+- Análisis de casos completos, **sin imputación**.
+- Se cuantifican los perdidos en cada descripción.
+- Exportación: celda vacía = no registrado; `is_missing` + `missing_reason` = ausencia explícita.

@@ -11,8 +11,9 @@
 --   · Los privilegios por defecto de public lo conceden todo a anon/authenticated: cada tabla se
 --     crea con RLS y se revoca todo en esta misma migración antes de conceder lo mínimo.
 --   · Sin borrado desde la API en ninguna tabla clínica (se anula o se corrige con trazabilidad).
---   · Ningún centro ni usuario se da de alta aquí: la lista de centros debe contrastarse con la
---     relación autorizada (docs/CARMO_REGULATORY_GAPS.md, RG-07 y RG-08).
+--   · Ningún usuario se da de alta aquí. Los 14 centros del protocolo v3.0 se registran como
+--     PENDIENTES DE AUTORIZACIÓN e INACTIVOS: el dictamen del CEIm-G aportado solo cita C.H.U. de
+--     A Coruña y C.H.U. de Santiago (RG-07, RG-08, RG-31). Sin número de estudio hasta su autorización.
 
 create schema if not exists carmo_private;
 revoke all on schema carmo_private from public;
@@ -71,7 +72,7 @@ create table public.carmo_centers (
   id uuid primary key default gen_random_uuid(),
   code text not null unique check (code ~ '^[A-Z0-9]{2,20}$'),
   name text not null check (length(trim(name)) >= 2),
-  study_number integer unique check (study_number between 1 and 99),
+  study_number integer unique check (study_number between 1 and 999),
   participation_status text not null default 'pending_authorization'
     check (participation_status in ('pending_authorization', 'authorized', 'closed')),
   authorization_reference text check (authorization_reference is null or length(trim(authorization_reference)) between 2 and 200),
@@ -248,6 +249,46 @@ create trigger trg_carmo_profiles_audit after insert or update or delete on publ
 for each row execute function carmo_private.write_audit_log();
 create trigger trg_carmo_centers_audit after insert or update or delete on public.carmo_centers
 for each row execute function carmo_private.write_audit_log();
+-- Protocolo v3.0 (Recogida de datos): «Solo se incluirá a un investigador principal por centro».
+create or replace function carmo_private.enforce_single_site_pi()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.ends_on is null
+     and (select p.role from public.carmo_profiles p where p.id = new.profile_id) = 'site_pi'
+     and exists (
+       select 1 from public.carmo_center_memberships m join public.carmo_profiles p on p.id = m.profile_id
+        where m.center_id = new.center_id and m.ends_on is null and p.role = 'site_pi' and m.id <> new.id
+     ) then
+    raise exception 'El centro ya tiene un investigador principal vigente (protocolo: un IP por centro). Registre antes su baja.';
+  end if;
+  return new;
+end;
+$$;
+create trigger trg_carmo_memberships_single_pi before insert or update on public.carmo_center_memberships
+for each row execute function carmo_private.enforce_single_site_pi();
+
+-- Centros enumerados en el protocolo v3.0 (Investigadores y centros participantes). Estado pendiente:
+-- su participación efectiva y su cobertura por el dictamen deben acreditarse antes de activarlos.
+insert into public.carmo_centers (code, name, participation_status, is_active) values
+  ('CHUAC', 'Complexo Hospitalario Universitario de A Coruña', 'pending_authorization', false),
+  ('VALME', 'Hospital Universitario Virgen de Valme (Sevilla)', 'pending_authorization', false),
+  ('CHUS', 'Complexo Hospitalario Universitario de Santiago de Compostela', 'pending_authorization', false),
+  ('HUNSC', 'Hospital Universitario Nuestra Señora de Candelaria (Santa Cruz de Tenerife)', 'pending_authorization', false),
+  ('HUPRINCESA', 'Hospital Universitario de la Princesa (Madrid)', 'pending_authorization', false),
+  ('HUVV', 'Hospital Universitario Virgen de la Victoria (Málaga)', 'pending_authorization', false),
+  ('HRUM', 'Hospital Regional Universitario de Málaga (Carlos Haya)', 'pending_authorization', false),
+  ('HCLINIC', 'Hospital Clínic de Barcelona', 'pending_authorization', false),
+  ('HUMV', 'Hospital Universitario Marqués de Valdecilla (Santander)', 'pending_authorization', false),
+  ('HUJ23', 'Hospital Universitari de Tarragona Joan XXIII', 'pending_authorization', false),
+  ('HCUVA', 'Hospital Clínico Universitario Virgen de la Arrixaca (Murcia)', 'pending_authorization', false),
+  ('HUJT', 'Hospital Universitari Dr. Josep Trueta (Girona)', 'pending_authorization', false),
+  ('HGUGM', 'Hospital General Universitario Gregorio Marañón (Madrid)', 'pending_authorization', false),
+  ('CAULE', 'Complejo Asistencial Universitario de León', 'pending_authorization', false);
+
 create trigger trg_carmo_memberships_audit after insert or update or delete on public.carmo_center_memberships
 for each row execute function carmo_private.write_audit_log();
 

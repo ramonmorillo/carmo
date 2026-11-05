@@ -47,7 +47,7 @@ export function PatientsPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Pacientes" title="Pacientes y candidatos" description="Sujetos seudonimizados de su ámbito. El registro de selección con datos identificativos se custodia en cada centro, fuera de CARMO." />
+      <PageHeader eyebrow="Pacientes" title="Pacientes y candidatos" description="Sujetos seudonimizados de su ámbito. Código de selección al registrar; código de paciente del protocolo (centro 3 cifras + 2 cifras consecutivas) al incluir. El registro de selección con datos identificativos (anexo 3) se custodia en cada centro, fuera de CARMO." />
       {ROLE_CAN.writeClinical(session.role) ? (
         <section className="card">
           <h2>Registrar candidato</h2>
@@ -68,10 +68,10 @@ export function PatientsPage() {
           <span className="text-muted">{shown.length} de {patients.length}</span>
         </div>
         <div className="table-wrap"><table className="carmo-table">
-          <thead><tr><th>Código</th><th>Centro</th><th>Estado</th><th>Cribado</th><th>Inclusión</th><th>Tipo de dato</th></tr></thead>
+          <thead><tr><th>Código de paciente</th><th>Código de selección</th><th>Centro</th><th>Estado</th><th>Cribado</th><th>Inclusión</th><th>Tipo de dato</th></tr></thead>
           <tbody>{shown.map((p) => (
             <tr key={p.id}>
-              <td><Link to={`/patients/${p.id}`}>{p.study_code}</Link></td><td>{centerName(p.center_id)}</td>
+              <td><Link to={`/patients/${p.id}`}>{p.study_code ?? '—'}</Link></td><td><Link to={`/patients/${p.id}`}>{p.screening_code}</Link></td><td>{centerName(p.center_id)}</td>
               <td>{label(PATIENT_STATUS_LABELS, p.status)}</td><td>{fmtDate(p.screening_date)}</td><td>{fmtDate(p.inclusion_date)}</td>
               <td>{p.is_synthetic ? <StatusBadge tone="warning">Sintético</StatusBadge> : <StatusBadge tone="info">Real</StatusBadge>}</td>
             </tr>))}

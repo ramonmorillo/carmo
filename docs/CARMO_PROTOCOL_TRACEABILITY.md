@@ -1,14 +1,19 @@
 # CARMO · Matriz de trazabilidad entre protocolo, formulario, BD, validación, exportación y prueba
 
-Versión 0.1 · 05/11/2026. «Protocolo» remite al resumen del encargo (§ del encargo), porque el protocolo v3.0 no estaba disponible (RG-01). Las pruebas citadas son:
+Versión 0.2 · 05/11/2026. «§» remite al encargo de desarrollo; «Protocolo» remite al protocolo v3.0 (índice de páginas). La versión aprobada es la v2.0 (RG-01). Las pruebas citadas son:
 
 - `db-tests/10_carmo_security_integrity.sql` (**DB**): PostgreSQL real con RLS;
 - `tests/*.test.ts` (**UT**): Vitest.
 
 | Requisito (encargo) | Formulario / pantalla | Tabla.columna | Validación (BD) | Exportación | Prueba |
 |---|---|---|---|---|---|
-| §4 Registro de candidatos y cribado | Pacientes → Registrar candidato | `carmo_patients` | Centro autorizado y activo; código asignado por la BD; inmutabilidad | raw/carmo_patients, analisis/pacientes | DB «código CARMO-01-0002…», «centro pendiente…» |
-| §4 Criterios de inclusión y exclusión | Ficha → Selección e inclusión | `carmo_eligibility_*` | Solo durante el cribado; versión del paciente; motivo obligatorio para cambiar | — (pendiente al cargar los criterios) | DB «sin criterios activos…», «criterio no cumplido…», «motivo…», «se congelan…» |
+| §4 Registro de candidatos y cribado | Pacientes → Registrar candidato | `carmo_patients.screening_code` | Centro autorizado y activo; código asignado por la BD; inmutabilidad | raw/carmo_patients, analisis/pacientes | DB «código de selección SEL-001-002», «centro pendiente…» |
+| Protocolo p. 18: código de paciente de 3+2 cifras, consecutivo por orden de inclusión | Ficha → Incluir | `carmo_patients.study_code`, `inclusion_seq` | Se asigna solo al incluir; irreversible; máximo 99 por centro | raw + analisis | DB «001-01», «no se puede revertir» |
+| Protocolo: un IP por centro | — (SQL administrativo) | `carmo_center_memberships` | `enforce_single_site_pi` | — | DB «un solo investigador principal» |
+| Protocolo p. 20: poblaciones por intención de tratar y por protocolo | — | derivada | — | `pob_itt`, `pob_pp` | UT export |
+| Protocolo: IEXPAC final por evaluador externo | Formulario IEXPAC (aviso) | `evaluator_conformity` | Fijada por la BD | raw/cuestionarios | DB (no_aplica en basal) |
+| HIP/CI: destino de los datos al terminar | Consentimiento | `carmo_consents.future_use_choice` | Dominio | raw/carmo_consents | DB inclusión |
+| Protocolo p. 9 y 17: criterios INC01-04 y EXC01-02 | Ficha → Selección e inclusión | `carmo_eligibility_*` (`CARMO-SEL-P3.0`, borrador) | Solo durante el cribado; versión del paciente; motivo obligatorio para cambiar | — | DB «criterios en BORRADOR», «sin criterios activos…», «criterio no cumplido…», «versión distinta…», «se congelan…» |
 | §4 Consentimiento (versión, fecha, investigador) | Ficha → Consentimiento | `carmo_consents` | Fecha ≤ hoy; investigador vigente del centro; retirada no reversible | raw/carmo_consents | DB «fecha futura», «investigador del centro» |
 | §4 No incluir sin requisitos | Botón «Incluir» + lista de requisitos | `carmo_private.inclusion_blockers` | Trigger `enforce_patient_status` | — | DB inclusión |
 | §4 Visitas previstas, realizadas y extraordinarias | Ficha → Visitas; Visita; Agenda | `carmo_visits`, `carmo_schedule_*`, `carmo_visit_windows` | Solo pacientes incluidos; una por código; sin fechas futuras; ≥ inclusión | raw/carmo_visits, raw/carmo_visit_windows | DB visitas; UT calendario |

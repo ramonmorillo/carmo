@@ -17,8 +17,8 @@ function fixture(): Record<string, Record<string, unknown>[]> {
   return {
     carmo_centers: [{ id: 'c1', code: 'CA', name: 'Centro A', study_number: 1, participation_status: 'authorized', is_active: true }],
     carmo_patients: [
-      { id: P1, center_id: 'c1', study_code: 'CARMO-01-0001', status: 'completed', status_reason: null, screening_date: '2026-01-01', inclusion_date: '2026-01-02', is_synthetic: true, eligibility_set_id: 's', created_at: '2026-01-01T00:00:00Z' },
-      { id: P2, center_id: 'c1', study_code: 'CARMO-01-0002', status: 'included', status_reason: null, screening_date: '2026-01-01', inclusion_date: '2026-01-02', is_synthetic: true, eligibility_set_id: 's', created_at: '2026-01-01T00:00:00Z' },
+      { id: P1, center_id: 'c1', screening_code: 'SEL-001-001', study_code: '001-01', inclusion_seq: 1, status: 'completed', status_reason: null, screening_date: '2026-01-01', inclusion_date: '2026-01-02', is_synthetic: true, eligibility_set_id: 's', created_at: '2026-01-01T00:00:00Z' },
+      { id: P2, center_id: 'c1', screening_code: 'SEL-001-002', study_code: '001-02', inclusion_seq: 2, status: 'included', status_reason: null, screening_date: '2026-01-01', inclusion_date: '2026-01-02', is_synthetic: true, eligibility_set_id: 's', created_at: '2026-01-01T00:00:00Z' },
     ],
     carmo_consents: [],
     carmo_visits: [
@@ -83,14 +83,16 @@ describe('exportación de investigación', () => {
   it('dataset pareado: valor vigente tras corrección, IEXPAC emparejado e IMC derivado, sin imputar', async () => {
     const bundle = await runResearchExport(memorySource(fixture()), options);
     const [header, ...rows] = csvOf(bundle.zip, 'analisis/longitudinal_pareado.csv');
-    const r1 = Object.fromEntries(header.map((h, i) => [h, rows.find((r) => r[0] === 'CARMO-01-0001')![i]]));
+    const r1 = Object.fromEntries(header.map((h, i) => [h, rows.find((r) => r[0] === '001-01')![i]]));
     expect(r1).toMatchObject({ iexpac_basal: '4.5455', iexpac_final: '7.2727', iexpac_dif: '2.7272', ldl_c_basal: '140', ldl_c_final: '70', ldl_c_dif: '-70', imc_basal: '26.1', imc_final: '' });
-    const r2 = Object.fromEntries(header.map((h, i) => [h, rows.find((r) => r[0] === 'CARMO-01-0002')![i]]));
+    const r2 = Object.fromEntries(header.map((h, i) => [h, rows.find((r) => r[0] === '001-02')![i]]));
     expect(r2.iexpac_basal).toBe('');
     expect(r2.iexpac_dif).toBe('');
     const [ph, ...prows] = csvOf(bundle.zip, 'analisis/pacientes.csv');
-    const pob = ph.indexOf('pob_iexpac_pareada');
-    expect(prows.map((r) => r[pob])).toEqual(['1', '0']);
+    const col = (n: string) => prows.map((r) => r[ph.indexOf(n)]);
+    expect(col('pob_iexpac_pareada')).toEqual(['1', '0']);
+    expect(col('pob_itt')).toEqual(['1', '1']);
+    expect(col('pob_pp')).toEqual(['1', '0']);
   });
 
   it('los datos originales no se modifican al exportar', async () => {

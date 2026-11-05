@@ -9,7 +9,7 @@ export type Center = { id: string; code: string; name: string; study_number: num
 export type Profile = { id: string; full_name: string | null; role: CarmoRole; is_active: boolean };
 export type Membership = { id: string; profile_id: string; center_id: string; starts_on: string; ends_on: string | null };
 export type Patient = {
-  id: string; center_id: string; study_code: string; status: string; status_reason: string | null; status_reason_detail: string | null;
+  id: string; center_id: string; screening_code: string; study_code: string | null; inclusion_seq: number | null; status: string; status_reason: string | null; status_reason_detail: string | null;
   screening_date: string; inclusion_date: string | null; responsible_investigator_id: string | null; is_synthetic: boolean; eligibility_set_id: string | null; created_at: string;
 };
 export type Visit = {
@@ -28,12 +28,12 @@ export type ObservationRow = {
 };
 export type EligibilityCriterion = { id: string; set_id: string; code: string; kind: 'inclusion' | 'exclusion'; ordinal: number; criterion_text: string; source_reference: string };
 export type EligibilityAnswer = { patient_id: string; criterion_id: string; is_met: boolean; verified_in_source: boolean };
-export type Consent = { id: string; patient_id: string; document_version: string; signed_date: string; investigator_id: string; status: string; withdrawal_date: string | null; withdrawal_scope: string | null };
+export type Consent = { id: string; patient_id: string; document_version: string; signed_date: string; investigator_id: string; status: string; withdrawal_date: string | null; withdrawal_scope: string | null; future_use_choice: string | null };
 export type Instrument = { code: string; version: string; status: string; item_count: number; item_min: number; item_max: number; allowed_visits: string[]; notes: string | null };
 export type Administration = {
   id: string; visit_id: string; patient_id: string; instrument_code: string; instrument_version: string; status: string; not_done_reason: string | null;
   administration_mode: string | null; data_source: string | null; administration_date: string | null; responses: Record<string, number>; items_answered: number;
-  scores: { global: number | null; sum: number | null; valid: boolean } | null; evaluator_role: string | null; revision: number;
+  scores: { global: number | null; sum: number | null; valid: boolean } | null; evaluator_role: string | null; evaluator_conformity: string | null; revision: number;
 };
 export type Treatment = {
   id: string; patient_id: string; active_ingredient: string; is_study_lipid_therapy: boolean; presentation: string | null; dose_amount: number | null; dose_unit: string | null;
@@ -77,7 +77,7 @@ export const carmo = {
   centers: () => list<Center>('carmo_centers', (q) => q.order('code')),
   profiles: () => list<Profile>('carmo_profiles'),
   memberships: () => list<Membership>('carmo_center_memberships'),
-  patients: () => list<Patient>('carmo_patients', (q) => q.order('study_code')),
+  patients: () => list<Patient>('carmo_patients', (q) => q.order('screening_code')),
   async patient(id: string): Promise<Patient | null> {
     const { data, error } = await client().from('carmo_patients').select('*').eq('id', id).maybeSingle();
     if (error) throw new Error(error.message);

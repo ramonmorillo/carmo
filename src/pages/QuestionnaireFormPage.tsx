@@ -7,7 +7,7 @@ import { Notice } from '../components/ui/Notice';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SaveStatus } from '../components/ui/SaveStatus';
 import { IEXPAC_ITEMS, scoreIexpac } from '../domain/iexpac';
-import { ROLE_CAN, VISIT_LABELS } from '../domain/study';
+import { patientCode, ROLE_CAN, VISIT_LABELS } from '../domain/study';
 import { fmtNum, label, todayIso } from '../lib/format';
 import { useCarmoSession } from '../lib/session';
 import { useSave } from '../lib/useSave';
@@ -74,12 +74,16 @@ export function QuestionnaireFormPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader eyebrow={<Link to={`/visits/${ctx.visit.id}`}>{ctx.patient.study_code} · {label(VISIT_LABELS, ctx.visit.visit_code)}</Link>} title={`IEXPAC · ${ctx.instrument.version}`}
+      <PageHeader eyebrow={<Link to={`/visits/${ctx.visit.id}`}>{patientCode(ctx.patient)} · {label(VISIT_LABELS, ctx.visit.visit_code)}</Link>} title={`IEXPAC · ${ctx.instrument.version}`}
         description="Variable principal. Registre el código de cada respuesta según el instrumento autorizado. Puntuación 0-10 solo con los 11 ítems respondidos." />
       {blocker.state === 'blocked' ? (
         <Notice tone="warning" title="Cambios sin guardar"><div className="carmo-actions"><button className="button-secondary" onClick={() => blocker.reset?.()}>Seguir editando</button><button className="button-ghost" onClick={() => blocker.proceed?.()}>Salir sin guardar</button></div></Notice>
       ) : null}
       {closed ? <Notice tone="info">Visita cerrada: solo lectura.</Notice> : null}
+      {ctx.visit.visit_code === 'FINAL' && !ctx.existing && session.role !== 'external_evaluator' ? (
+        <Notice tone="warning" title="Evaluador no conforme con el protocolo">El protocolo establece que el IEXPAC final lo cumplimenta un miembro de un equipo externo al equipo investigador. Si lo registra usted, quedará marcado como «no conforme».</Notice>
+      ) : null}
+      {ctx.existing?.evaluator_conformity === 'not_conform' ? <Notice tone="warning">Registrado por un evaluador no externo (no conforme con el protocolo).</Notice> : null}
       <form className="card" onSubmit={submit}>
         <div className="carmo-form">
           <label>Modalidad<select disabled={!canWrite} value={meta.administration_mode} onChange={(e) => { setMeta({ ...meta, administration_mode: e.target.value }); setDirty(true); }}><option value="self">Autoadministrado</option><option value="interviewer">Entrevista</option><option value="assisted">Con ayuda</option></select></label>

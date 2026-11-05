@@ -5,16 +5,24 @@ export const VISIT_CODES = ['BASAL', 'S12', 'S24', 'S36', 'S48', 'FINAL', 'EXTRA
 export type VisitCode = (typeof VISIT_CODES)[number];
 
 export const VISIT_LABELS: Record<VisitCode, string> = {
-  BASAL: 'Evaluación inicial (sem. 1-4)',
+  BASAL: 'Visita inicial (inclusión)',
   S12: 'Semana 12',
   S24: 'Semana 24',
   S36: 'Semana 36',
-  S48: 'Semana 48',
-  FINAL: 'Visita final (12 meses)',
+  S48: 'Semana 48 (no programada en el calendario 0.2)',
+  FINAL: 'Visita fin de estudio (12 meses ±28 d)',
   EXTRA: 'Contacto extraordinario',
 };
 
-export const PROGRAMMED_VISITS: VisitCode[] = ['BASAL', 'S12', 'S24', 'S36', 'S48', 'FINAL'];
+// Calendario CARMO-CAL-0.2 (protocolo v3.0): S48 de la tabla del protocolo vs 12 meses ±28 días (RG-05).
+export const PROGRAMMED_VISITS: VisitCode[] = ['BASAL', 'S12', 'S24', 'S36', 'FINAL'];
+
+/** Código visible: código de paciente del protocolo (<CCC>-<PP>) tras la inclusión; si no, código de selección. */
+export function patientCode(p: { study_code: string | null; screening_code: string }): string {
+  return p.study_code ?? p.screening_code;
+}
+
+export const FUTURE_USE_LABELS = { delete: 'Eliminados al terminar el estudio', keep_pseudonymized: 'Conservados seudonimizados para usos futuros' } as const;
 
 export const VISIT_STATUS_LABELS = { planned: 'Prevista', done: 'Realizada', not_done: 'No realizada', cancelled: 'Anulada' } as const;
 export const RECORD_STATE_LABELS = { draft: 'Borrador', reviewed: 'Revisada', closed: 'Cerrada' } as const;

@@ -11,7 +11,7 @@ import { pairIexpac } from '../domain/iexpac';
 import { WINDOW_STATUS_LABELS, isOverdue, type WindowStatus } from '../domain/schedule';
 import {
   INCLUSION_BLOCKER_LABELS, MODALITY_LABELS, PATIENT_STATUS_LABELS, PROGRAMMED_VISITS, RECORD_STATE_LABELS, ROLE_CAN,
-  STATUS_REASON_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS, type VisitCode,
+  FUTURE_USE_LABELS, STATUS_REASON_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS, patientCode, type VisitCode,
 } from '../domain/study';
 import { fmtDate, fmtNum, label, todayIso } from '../lib/format';
 import { useCarmoSession, type CarmoSession } from '../lib/session';
@@ -62,7 +62,7 @@ export function PatientDetailPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader eyebrow={`Paciente · ${center?.code ?? ''}`} title={patient.study_code}
+      <PageHeader eyebrow={`Paciente · ${center?.code ?? ''}`} title={patientCode(patient)}
         description={<>{label(PATIENT_STATUS_LABELS, patient.status)} · cribado {fmtDate(patient.screening_date)} · inclusión {fmtDate(patient.inclusion_date)}{' '}
           {patient.is_synthetic ? <StatusBadge tone="warning">Dato sintético</StatusBadge> : null}</>} />
       <section className="carmo-kpis" aria-label="Resumen del paciente">
@@ -86,7 +86,7 @@ function InclusionSection({ data, session, reload }: { data: Data; session: Carm
   const save = useSave();
   const canWrite = ROLE_CAN.writeClinical(session.role);
   const [reason, setReason] = useState('');
-  const [consent, setConsent] = useState({ document_version: '', signed_date: '', investigator_id: session.userId });
+  const [consent, setConsent] = useState({ document_version: '', signed_date: '', investigator_id: session.userId, future_use_choice: '' });
   const [notIncluded, setNotIncluded] = useState('not_eligible');
   const answerOf = (cid: string) => data.answers.find((a) => a.criterion_id === cid);
 
@@ -102,7 +102,7 @@ function InclusionSection({ data, session, reload }: { data: Data; session: Carm
   };
   const saveConsent = (e: FormEvent) => {
     e.preventDefault();
-    void save.run(() => carmoWrite.insert('carmo_consents', { patient_id: data.patient.id, ...consent }), reload);
+    void save.run(() => carmoWrite.insert('carmo_consents', { patient_id: data.patient.id, ...consent, future_use_choice: consent.future_use_choice || null }), reload);
   };
   const include = () => void save.run(() => carmoWrite.update('carmo_patients', { status: 'included' }, { id: data.patient.id }), reload);
   const reject = () => void save.run(() => carmoWrite.update('carmo_patients', { status: 'not_included', status_reason: notIncluded }, { id: data.patient.id }), reload);
@@ -133,7 +133,7 @@ function InclusionSection({ data, session, reload }: { data: Data; session: Carm
       )}
       <h3>Consentimiento informado</h3>
       {data.consents.length > 0 ? (
-        <ul>{data.consents.map((c) => <li key={c.id}>Versión «{c.document_version}» · firmado {fmtDate(c.signed_date)} · {c.status === 'signed' ? 'vigente' : `retirado ${fmtDate(c.withdrawal_date)}`}</li>)}</ul>
+        <ul>{data.consents.map((c) => <li key={c.id}>Versión «{c.document_version}» · firmado {fmtDate(c.signed_date)} · {c.status === 'signed' ? 'vigente' : `retirado ${fmtDate(c.withdrawal_date)}`} · datos al terminar: {label(FUTURE_USE_LABELS, c.future_use_choice)}</li>)}</ul>
       ) : canWrite ? (
         <form className="carmo-form" onSubmit={saveConsent}>
           <label>Versión documental de la HIP/CI<input required maxLength={80} value={consent.document_version} onChange={(e) => setConsent({ ...consent, document_version: e.target.value })} /></label>
@@ -141,6 +141,8 @@ function InclusionSection({ data, session, reload }: { data: Data; session: Carm
           <label>Investigador responsable<select value={consent.investigator_id} onChange={(e) => setConsent({ ...consent, investigator_id: e.target.value })}>
             {investigators.map((p) => <option key={p.id} value={p.id}>{p.full_name ?? 'Investigador/a'}{p.id === session.userId ? ' (yo)' : ''}</option>)}
           </select></label>
+          <label>Destino de los datos al terminar (elección en el CI)<select value={consent.future_use_choice} onChange={(e) => setConsent({ ...consent, future_use_choice: e.target.value })}>
+            <option value="">No consta</option>{Object.entries(FUTURE_USE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <div><button className="button-link" type="submit" disabled={save.saving}>Registrar consentimiento</button></div>
           <p className="carmo-hint span-all">El documento firmado se archiva en el centro; CARMO solo registra la constancia.</p>
         </form>

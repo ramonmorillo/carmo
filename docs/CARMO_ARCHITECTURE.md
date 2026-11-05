@@ -11,7 +11,7 @@ Versión 0.1 · 05/11/2026 · Fases 0-1 completas; fases 2-6 parcialmente comple
 | `ramonmorillo/dermapex` @ `15082e5` | React 18.3 + TS 5.9 + Vite 5.4 + React Router 6.30 (hash) + supabase-js 2.53 + xlsx 0.18.5 + Vitest 2.1.9. **Es el historial canónico de migraciones del proyecto Supabase compartido**: contiene también las de COAMO (`coag_*`) y las baterías SQL de RLS (`db-tests/`) |
 | `ramonmorillo/COAMO` @ `1e5334c` | Segunda aplicación sobre el mismo proyecto. Su frontend es el patrón más cercano a CARMO: barrera de acceso por aplicación, perfiles propios, exportación de investigación verificada (ZIP + manifiesto + SPSS), cuestionarios con revisión y motivo |
 | Proyecto Supabase `efjpjponblmdjlhmmiet` («dermapex», eu-west-1, PG 17), consultado solo con `SELECT` | 31 migraciones aplicadas, idénticas en nombre a las del repositorio DERMAPEX. Esquemas propios: `public` (DERMAPEX sin prefijo; COAMO con `coag_*`), `app_private`, `coag_private`. **Ningún objeto `carmo`**. `app_access`: 7 cuentas `dermapex` y 7 `coag`. CHECK `app_code IN ('dermapex','coag')`. Trigger `trg_auth_users_create_profile` en `auth.users` |
-| Protocolo CARMO v3.0 y dictamen del CEIm | **No disponibles** en el entorno ni en Drive (RG-01) |
+| Protocolo CARMO v3.0 y dictamen del CEIm-G | Aportados el 05/11/2026 (fuera del repositorio). El dictamen cubre la v2.0 y 2 centros (RG-01, RG-31) |
 | Modelo CMO cardiovascular (MAPEX-SEFH) | **No localizado** (RG-21) |
 
 ### 1.2 Matriz de reutilización
@@ -101,7 +101,7 @@ Además: estados borrador/revisado/cerrado con bloqueo de dependientes; reapertu
 |---|---|
 | 0 Auditoría | Completa |
 | 1 Infraestructura | Completa (migraciones no aplicadas en producción) |
-| 2 eCRD | Estructura completa; contenido **provisional** a la espera del protocolo (criterios, demografía, sociosanitarias, dominios) |
+| 2 eCRD | Variables, criterios (borrador), calendario y código de paciente transcritos del protocolo v3.0; pendientes de conciliar con la v2.0 aprobada |
 | 3 Modelo CMO | Motor genérico + estructura; **cálculo desactivado** (RG-21, RG-22) |
 | 4 Cuestionarios | IEXPAC completo; EQ-5D/EVASAF/Morisky bloqueados |
 | 5 Gestión científica | Panel, agenda, exportación verificada; informes PDF individuales no implementados |

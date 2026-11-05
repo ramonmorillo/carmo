@@ -45,7 +45,7 @@ end $$;
 create function carmo_test.center_id(p_code text) returns uuid language sql security definer as $$
   select id from public.carmo_centers where code = p_code $$;
 create function carmo_test.patient_id(p_code text) returns uuid language sql security definer as $$
-  select id from public.carmo_patients where study_code = p_code $$;
+  select id from public.carmo_patients where screening_code = p_code $$;
 grant execute on all functions in schema carmo_test to anon, authenticated;
 
 -- ── Inventario de seguridad (protege también tablas carmo_* futuras) ────────
@@ -122,6 +122,13 @@ select carmo_private.assign_center('mon.a@carmo.test', 'CA');
 select carmo_private.assign_center('revoked@carmo.test', 'CA');
 select carmo_private.assign_center('inv.b@carmo.test', 'CB');
 select carmo_private.assign_center('inv.b@carmo.test', 'CP');
+insert into auth.users (id, email) values ('ca000000-0000-4000-8000-000000000010', 'pi2.a@carmo.test');
+select carmo_private.provision_user('pi2.a@carmo.test', 'site_pi');
+select carmo_test.expect_fail($$select carmo_private.assign_center('pi2.a@carmo.test', 'CA')$$, 'un solo investigador principal vigente por centro (protocolo)');
+select carmo_test.expect((select count(*) from public.carmo_centers where code not in ('CA', 'CB', 'CP') and participation_status = 'pending_authorization' and not is_active and study_number is null) = 14,
+  'los 14 centros del protocolo quedan pendientes de autorización e inactivos');
+select carmo_test.expect((select status = 'draft' and (select count(*) from public.carmo_eligibility_criteria c where c.set_id = s.id) = 6
+  from public.carmo_eligibility_sets s where version = 'CARMO-SEL-P3.0'), 'criterios del protocolo v3.0 cargados en BORRADOR (4 de inclusión, 2 de exclusión)');
 
 -- Paciente creado antes de existir criterios activos: nunca podrá incluirse con esta configuración.
 begin;
@@ -131,7 +138,7 @@ insert into public.carmo_patients (center_id, responsible_investigator_id)
 commit;
 begin;
 select carmo_test.as_user('ca000000-0000-4000-8000-000000000003');
-select carmo_test.expect_fail($$update public.carmo_patients set status = 'included' where study_code = 'CARMO-01-0001'$$,
+select carmo_test.expect_fail($$update public.carmo_patients set status = 'included' where screening_code = 'SEL-001-001'$$,
   'sin criterios de selección activos no se puede incluir a nadie');
 commit;
 
@@ -151,7 +158,8 @@ select carmo_test.as_user('ca000000-0000-4000-8000-000000000003');
 insert into public.carmo_patients (center_id, responsible_investigator_id)
   select id, 'ca000000-0000-4000-8000-000000000003' from public.carmo_centers where code = 'CA';
 select carmo_test.expect((select count(*) from public.carmo_patients) = 2, 'el investigador de A ve sus 2 pacientes');
-select carmo_test.expect((select study_code from public.carmo_patients order by center_seq desc limit 1) = 'CARMO-01-0002', 'código CARMO-01-0002 asignado por la BD');
+select carmo_test.expect((select screening_code = 'SEL-001-002' and study_code is null from public.carmo_patients order by screening_seq desc limit 1),
+  'código de selección SEL-001-002 asignado por la BD; sin código de paciente antes de la inclusión');
 select carmo_test.expect((select bool_and(is_synthetic) from public.carmo_patients), 'modo validación: todo paciente queda marcado sintético');
 select carmo_test.expect_fail($$insert into public.carmo_patients (center_id) values (carmo_test.center_id('CB'))$$, 'G4: no se dan de alta pacientes en otro centro (UUID conocido)');
 select carmo_test.expect_fail($$update public.carmo_patients set is_synthetic = false$$, 'el carácter sintético no es modificable desde la API');
@@ -163,7 +171,7 @@ select carmo_test.expect_fail($$insert into public.carmo_patients (center_id) se
 insert into public.carmo_patients (center_id, responsible_investigator_id)
   select id, 'ca000000-0000-4000-8000-000000000004' from public.carmo_centers where code = 'CB';
 select carmo_test.expect((select count(*) from public.carmo_patients) = 1, 'G4: el investigador de B solo ve su paciente');
-select carmo_test.expect(carmo_test.affected($$update public.carmo_patients set responsible_investigator_id = null where study_code like 'CARMO-01-%'$$) = 0,
+select carmo_test.expect(carmo_test.affected($$update public.carmo_patients set responsible_investigator_id = null where screening_code like 'SEL-001-%'$$) = 0,
   'G4: una actualización manipulada sobre pacientes de A no afecta a ninguna fila');
 select carmo_test.expect_fail($$update public.carmo_patients set center_id = (select id from public.carmo_centers where code = 'CA')$$, 'G4: no se puede mover un paciente a otro centro');
 commit;
@@ -172,26 +180,32 @@ commit;
 
 begin;
 select carmo_test.as_user('ca000000-0000-4000-8000-000000000003');
-select carmo_test.expect(public.carmo_inclusion_blockers((select id from public.carmo_patients where study_code = 'CARMO-01-0002'))
+select carmo_test.expect(public.carmo_inclusion_blockers((select id from public.carmo_patients where screening_code = 'SEL-001-002'))
   @> array['eligibility_not_satisfied', 'no_signed_consent'], 'requisitos pendientes informados');
 insert into public.carmo_eligibility_answers (patient_id, criterion_id, is_met, verified_in_source)
   select p.id, c.id, c.code <> 'INC02', true from public.carmo_patients p, public.carmo_eligibility_criteria c
-   where p.study_code = 'CARMO-01-0002';
+   where p.screening_code = 'SEL-001-002' and c.set_id = p.eligibility_set_id;
+select carmo_test.expect_fail($$insert into public.carmo_eligibility_answers (patient_id, criterion_id, is_met)
+  select p.id, c.id, true from public.carmo_patients p join public.carmo_eligibility_criteria c on c.code = 'INC04'
+    join public.carmo_eligibility_sets s on s.id = c.set_id and s.version = 'CARMO-SEL-P3.0' where p.screening_code = 'SEL-001-002'$$,
+  'no se responden criterios de una versión distinta de la asignada al paciente');
 select carmo_test.expect_fail($$insert into public.carmo_consents (patient_id, document_version, signed_date, investigator_id)
-  select id, 'HIP/CI ficticio v1', current_date + 1, 'ca000000-0000-4000-8000-000000000003' from public.carmo_patients where study_code = 'CARMO-01-0002'$$,
+  select id, 'HIP/CI ficticio v1', current_date + 1, 'ca000000-0000-4000-8000-000000000003' from public.carmo_patients where screening_code = 'SEL-001-002'$$,
   'consentimiento con fecha futura rechazado');
 select carmo_test.expect_fail($$insert into public.carmo_consents (patient_id, document_version, signed_date, investigator_id)
-  select id, 'HIP/CI ficticio v1', current_date, 'ca000000-0000-4000-8000-000000000004' from public.carmo_patients where study_code = 'CARMO-01-0002'$$,
+  select id, 'HIP/CI ficticio v1', current_date, 'ca000000-0000-4000-8000-000000000004' from public.carmo_patients where screening_code = 'SEL-001-002'$$,
   'el investigador del consentimiento debe ser del centro del paciente');
-insert into public.carmo_consents (patient_id, document_version, signed_date, investigator_id)
-  select id, 'HIP/CI ficticio v1', current_date, 'ca000000-0000-4000-8000-000000000003' from public.carmo_patients where study_code = 'CARMO-01-0002';
-select carmo_test.expect_fail($$update public.carmo_patients set status = 'included' where study_code = 'CARMO-01-0002'$$,
+insert into public.carmo_consents (patient_id, document_version, signed_date, investigator_id, future_use_choice)
+  select id, 'HIP/CI ficticio v1', current_date, 'ca000000-0000-4000-8000-000000000003', 'keep_pseudonymized' from public.carmo_patients where screening_code = 'SEL-001-002';
+select carmo_test.expect_fail($$update public.carmo_patients set status = 'included' where screening_code = 'SEL-001-002'$$,
   'no se incluye con un criterio de inclusión no cumplido (y EXC01 cumplido)');
 select carmo_test.expect_fail($$update public.carmo_eligibility_answers set is_met = true$$, 'modificar respuestas exige motivo');
 update public.carmo_eligibility_answers a set is_met = (c.kind = 'inclusion'), correction_reason = 'Verificado de nuevo en la historia clínica'
   from public.carmo_eligibility_criteria c where c.id = a.criterion_id and c.code in ('INC02', 'EXC01');
-update public.carmo_patients set status = 'included' where study_code = 'CARMO-01-0002';
-select carmo_test.expect((select inclusion_date = current_date from public.carmo_patients where study_code = 'CARMO-01-0002'), 'inclusión con fecha fijada por la BD');
+update public.carmo_patients set status = 'included' where screening_code = 'SEL-001-002';
+select carmo_test.expect((select inclusion_date = current_date and study_code = '001-01' and inclusion_seq = 1 from public.carmo_patients where screening_code = 'SEL-001-002'),
+  'inclusión: fecha y código de paciente del protocolo (001-01, consecutivo por orden de inclusión) fijados por la BD');
+select carmo_test.expect_fail($$update public.carmo_patients set status = 'screening' where screening_code = 'SEL-001-002'$$, 'el código de paciente no se puede revertir');
 select carmo_test.expect_fail($$update public.carmo_eligibility_answers set is_met = false, correction_reason = 'x'$$, 'los criterios se congelan tras el cribado');
 commit;
 
@@ -199,16 +213,16 @@ commit;
 
 begin;
 select carmo_test.as_user('ca000000-0000-4000-8000-000000000003');
-select carmo_test.expect_fail($$insert into public.carmo_visits (patient_id, visit_code) select id, 'BASAL' from public.carmo_patients where study_code = 'CARMO-01-0001'$$,
+select carmo_test.expect_fail($$insert into public.carmo_visits (patient_id, visit_code) select id, 'BASAL' from public.carmo_patients where screening_code = 'SEL-001-001'$$,
   'no se registran visitas de pacientes no incluidos');
 insert into public.carmo_visits (patient_id, visit_code, actual_date, status, modality, responsible_id)
-  select id, 'BASAL', current_date, 'done', 'in_person', 'ca000000-0000-4000-8000-000000000003' from public.carmo_patients where study_code = 'CARMO-01-0002';
-insert into public.carmo_visits (patient_id, visit_code) select id, 'S12' from public.carmo_patients where study_code = 'CARMO-01-0002';
-insert into public.carmo_visits (patient_id, visit_code) select id, 'FINAL' from public.carmo_patients where study_code = 'CARMO-01-0002';
+  select id, 'BASAL', current_date, 'done', 'in_person', 'ca000000-0000-4000-8000-000000000003' from public.carmo_patients where screening_code = 'SEL-001-002';
+insert into public.carmo_visits (patient_id, visit_code) select id, 'S12' from public.carmo_patients where screening_code = 'SEL-001-002';
+insert into public.carmo_visits (patient_id, visit_code) select id, 'FINAL' from public.carmo_patients where screening_code = 'SEL-001-002';
 select carmo_test.expect((select planned_date = current_date + 84 from public.carmo_visits where visit_code = 'S12'), 'fecha prevista S12 = inclusión + 84 días (calendario versionado)');
 select carmo_test.expect((select window_status from public.carmo_visit_windows where visit_code = 'S12') = 'not_done_yet', 'ventana S12: aún no realizada');
 select carmo_test.expect((select window_status from public.carmo_visit_windows where visit_code = 'BASAL') = 'in_window', 'ventana basal calculada');
-select carmo_test.expect_fail($$insert into public.carmo_visits (patient_id, visit_code) select id, 'BASAL' from public.carmo_patients where study_code = 'CARMO-01-0002'$$,
+select carmo_test.expect_fail($$insert into public.carmo_visits (patient_id, visit_code) select id, 'BASAL' from public.carmo_patients where screening_code = 'SEL-001-002'$$,
   'una sola visita basal por paciente');
 select carmo_test.expect_fail($$update public.carmo_visits set actual_date = current_date + 3, status = 'done', modality = 'phone', responsible_id = 'ca000000-0000-4000-8000-000000000003' where visit_code = 'S12'$$,
   'una visita realizada no tiene fecha futura');
@@ -216,7 +230,7 @@ update public.carmo_visits set status = 'done', actual_date = current_date, moda
 select carmo_test.expect((select status = 'planned' and actual_date is null and revision = 1 from public.carmo_visits where visit_code = 'FINAL'),
   'G3: modificar S12 no altera otra visita');
 insert into public.carmo_visits (patient_id, visit_code, actual_date, status, modality, responsible_id)
-  select id, 'EXTRA', current_date, 'done', 'phone', 'ca000000-0000-4000-8000-000000000003' from public.carmo_patients where study_code = 'CARMO-01-0002';
+  select id, 'EXTRA', current_date, 'done', 'phone', 'ca000000-0000-4000-8000-000000000003' from public.carmo_patients where screening_code = 'SEL-001-002';
 select carmo_test.expect((select count(*) from public.carmo_visits where visit_code = 'EXTRA' and schedule_visit_id is null) = 1, 'contacto extraordinario sin calendario');
 commit;
 
@@ -240,10 +254,10 @@ select carmo_test.expect_fail($$insert into public.carmo_observations (patient_i
   select p.id, v.id, 'weight', 5, 'kg', current_date, 'clinical_record', 'baseline' from public.carmo_patients p join public.carmo_visits v on v.patient_id = p.id and v.visit_code = 'BASAL'$$,
   'valor fuera de rango rechazado');
 select carmo_test.expect_fail($$insert into public.carmo_observations (patient_id, variable_code, value_boolean, observed_date, data_source, temporal_context)
-  select id, 'ami', true, current_date - 400, 'clinical_record', 'incident_event' from public.carmo_patients where study_code = 'CARMO-01-0002'$$,
+  select id, 'ami', true, current_date - 400, 'clinical_record', 'incident_event' from public.carmo_patients where screening_code = 'SEL-001-002'$$,
   'un evento previo a la inclusión no se registra como incidente');
 insert into public.carmo_observations (patient_id, variable_code, value_boolean, observed_date, data_source, temporal_context)
-  select id, 'ami', true, current_date - 400, 'clinical_record', 'history_prior_inclusion' from public.carmo_patients where study_code = 'CARMO-01-0002';
+  select id, 'ami', true, current_date - 400, 'clinical_record', 'history_prior_inclusion' from public.carmo_patients where screening_code = 'SEL-001-002';
 insert into public.carmo_observations (patient_id, visit_id, variable_code, is_missing, missing_reason, observed_date, data_source, temporal_context)
   select p.id, v.id, 'non_hdl_c', true, 'not_done', current_date, 'lab_report', 'baseline' from public.carmo_patients p join public.carmo_visits v on v.patient_id = p.id and v.visit_code = 'BASAL';
 select carmo_test.expect_fail($$update public.carmo_observations set value_numeric = 99$$, 'G2: una observación no se edita (sin privilegio UPDATE)');
@@ -268,8 +282,8 @@ begin;
 select carmo_test.as_user('ca000000-0000-4000-8000-000000000004');
 select carmo_test.expect((select count(*) from public.carmo_observations) = 0, 'G4: el investigador de B no ve observaciones de A');
 select carmo_test.expect_fail($$insert into public.carmo_observations (patient_id, variable_code, value_boolean, observed_date, data_source, temporal_context)
-  values (carmo_test.patient_id('CARMO-01-0002'), 'diabetes', true, current_date, 'clinical_record', 'baseline')$$, 'G4: no escribe en pacientes de A (UUID conocido)');
-select carmo_test.expect_fail($$insert into public.carmo_visits (patient_id, visit_code) values (carmo_test.patient_id('CARMO-01-0002'), 'S24')$$, 'G4: no crea visitas en pacientes de A');
+  values (carmo_test.patient_id('SEL-001-002'), 'diabetes', true, current_date, 'clinical_record', 'baseline')$$, 'G4: no escribe en pacientes de A (UUID conocido)');
+select carmo_test.expect_fail($$insert into public.carmo_visits (patient_id, visit_code) values (carmo_test.patient_id('SEL-001-002'), 'S24')$$, 'G4: no crea visitas en pacientes de A');
 commit;
 
 -- ── Cuestionarios (IEXPAC) ──────────────────────────────────────────────────
@@ -281,7 +295,7 @@ insert into public.carmo_questionnaire_administrations (visit_id, patient_id, in
     from public.carmo_visits v where v.visit_code = 'BASAL';
 select carmo_test.expect((select scores ->> 'global' is null and (scores ->> 'valid')::boolean = false and items_answered = 10
   from public.carmo_questionnaire_administrations), 'IEXPAC con 10/11 ítems: sin puntuación global');
-select carmo_test.expect((select evaluator_id = 'ca000000-0000-4000-8000-000000000005' and evaluator_role = 'external_evaluator' and instrument_version = 'IEXPAC-11'
+select carmo_test.expect((select evaluator_id = 'ca000000-0000-4000-8000-000000000005' and evaluator_role = 'external_evaluator' and instrument_version = 'IEXPAC-11' and evaluator_conformity = 'not_applicable'
   from public.carmo_questionnaire_administrations), 'evaluador, rol y versión fijados por la BD');
 select carmo_test.expect_fail($$update public.carmo_questionnaire_administrations set responses = responses || '{"11":5}'$$,
   'modificar un cuestionario completado exige motivo');
@@ -302,7 +316,7 @@ select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administr
   'ítem inexistente rechazado');
 select carmo_test.expect((select count(*) from public.carmo_observations) = 0, 'el evaluador externo no ve datos clínicos');
 select carmo_test.expect_fail($$insert into public.carmo_observations (patient_id, variable_code, value_boolean, observed_date, data_source, temporal_context)
-  values (carmo_test.patient_id('CARMO-01-0002'), 'diabetes', true, current_date, 'clinical_record', 'baseline')$$, 'el evaluador externo no registra datos clínicos');
+  values (carmo_test.patient_id('SEL-001-002'), 'diabetes', true, current_date, 'clinical_record', 'baseline')$$, 'el evaluador externo no registra datos clínicos');
 commit;
 
 select carmo_test.expect((carmo_private.iexpac_score('{"1":1,"2":1,"3":1,"4":1,"5":1,"6":1,"7":1,"8":1,"9":1,"10":1,"11":1}') ->> 'global')::numeric = 0, 'G6: IEXPAC 11 × 1 = 0');
@@ -332,7 +346,7 @@ commit;
 begin;
 select carmo_test.as_user('ca000000-0000-4000-8000-000000000003');
 insert into public.carmo_treatments (patient_id, active_ingredient, dose_amount, dose_unit, frequency, route, start_date)
-  select id, 'Evolocumab', 140, 'mg', 'cada 2 semanas', 'subcutaneous', current_date - 30 from public.carmo_patients where study_code = 'CARMO-01-0002';
+  select id, 'Evolocumab', 140, 'mg', 'cada 2 semanas', 'subcutaneous', current_date - 30 from public.carmo_patients where screening_code = 'SEL-001-002';
 select carmo_test.expect((select is_study_lipid_therapy and started_before_inclusion from public.carmo_treatments), 'evolocumab reconocido como tratamiento principal iniciado antes de la inclusión');
 select carmo_test.expect((select count(*) from public.carmo_treatment_events where event_type = 'start') = 1, 'evento de inicio creado automáticamente');
 select carmo_test.expect_fail($$update public.carmo_treatments set dose_amount = 420$$, 'un tratamiento no se edita directamente');
@@ -357,7 +371,7 @@ select carmo_test.expect_fail($$insert into public.carmo_stratifications (patien
   select patient_id, id, 'TEST-DRAFT', 'engine-0.1', '{}', '[]', 0, 3, 'x' from public.carmo_visits where visit_code = 'BASAL'$$,
   'estratificación rechazada con un modelo no validado');
 select carmo_test.expect_fail($$insert into public.carmo_interventions (patient_id, catalog_code, intervention_date, is_scheduled, modality)
-  select id, 'NOPE', current_date, true, 'in_person' from public.carmo_patients where study_code = 'CARMO-01-0002'$$,
+  select id, 'NOPE', current_date, true, 'in_person' from public.carmo_patients where screening_code = 'SEL-001-002'$$,
   'intervención rechazada sin categoría del catálogo validado');
 commit;
 
@@ -373,7 +387,7 @@ commit;
 
 begin;
 select carmo_test.as_user('ca000000-0000-4000-8000-000000000007');
-select carmo_test.expect((select count(*) from public.carmo_centers) = 3 and (select count(*) from public.carmo_patients) = 0,
+select carmo_test.expect((select count(*) from public.carmo_centers) = 17 and (select count(*) from public.carmo_patients) = 0,
   'la administración técnica gestiona centros sin ver pacientes');
 commit;
 
@@ -412,14 +426,14 @@ commit;
 
 begin;
 select carmo_test.as_user('ca000000-0000-4000-8000-000000000003');
-select carmo_test.expect_fail($$update public.carmo_patients set status = 'completed' where study_code = 'CARMO-01-0002'$$, 'no se cierra el seguimiento sin visita final realizada');
-select carmo_test.expect_fail($$update public.carmo_patients set status = 'withdrawn', status_reason = 'consent_withdrawn' where study_code = 'CARMO-01-0002'$$,
+select carmo_test.expect_fail($$update public.carmo_patients set status = 'completed' where screening_code = 'SEL-001-002'$$, 'no se cierra el seguimiento sin visita final realizada');
+select carmo_test.expect_fail($$update public.carmo_patients set status = 'withdrawn', status_reason = 'consent_withdrawn' where screening_code = 'SEL-001-002'$$,
   'retirada por consentimiento exige registrar la retirada del consentimiento');
 update public.carmo_consents set status = 'withdrawn', withdrawal_date = current_date, withdrawal_scope = 'stop_followup_data_pending_decision';
-update public.carmo_patients set status = 'withdrawn', status_reason = 'consent_withdrawn' where study_code = 'CARMO-01-0002';
+update public.carmo_patients set status = 'withdrawn', status_reason = 'consent_withdrawn' where screening_code = 'SEL-001-002';
 select carmo_test.expect((select count(*) from public.carmo_observations o join public.carmo_patients p on p.id = o.patient_id where p.status = 'withdrawn') > 0,
   'los datos previos a la retirada se conservan (política de uso pendiente RG-10)');
-select carmo_test.expect_fail($$insert into public.carmo_visits (patient_id, visit_code) select id, 'S24' from public.carmo_patients where study_code = 'CARMO-01-0002'$$,
+select carmo_test.expect_fail($$insert into public.carmo_visits (patient_id, visit_code) select id, 'S24' from public.carmo_patients where screening_code = 'SEL-001-002'$$,
   'no se programan visitas tras la retirada');
 commit;
 

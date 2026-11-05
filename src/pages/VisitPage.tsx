@@ -9,7 +9,7 @@ import { SaveStatus } from '../components/ui/SaveStatus';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { correctionChain, currentObservations } from '../domain/observations';
 import {
-  DATA_SOURCE_LABELS, MISSING_REASON_LABELS, MODALITY_LABELS, RECORD_STATE_LABELS, ROLE_CAN, TEMPORAL_CONTEXT_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS,
+  patientCode, DATA_SOURCE_LABELS, MISSING_REASON_LABELS, MODALITY_LABELS, RECORD_STATE_LABELS, ROLE_CAN, TEMPORAL_CONTEXT_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS,
 } from '../domain/study';
 import { fmtDate, label, todayIso } from '../lib/format';
 import { useCarmoSession } from '../lib/session';
@@ -46,7 +46,7 @@ export function VisitPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader eyebrow={<Link to={`/patients/${patient.id}`}>{patient.study_code}</Link>} title={label(VISIT_LABELS, visit.visit_code)}
+      <PageHeader eyebrow={<Link to={`/patients/${patient.id}`}>{patientCode(patient)}</Link>} title={label(VISIT_LABELS, visit.visit_code)}
         description={<>Prevista {fmtDate(visit.planned_date)} · efectiva {fmtDate(visit.actual_date)} · {label(VISIT_STATUS_LABELS, visit.status)} · registro <StatusBadge tone={closed ? 'neutral' : 'info'}>{label(RECORD_STATE_LABELS, visit.record_state)}</StatusBadge></>} />
       {closed ? <Notice tone="info" title="Visita cerrada">Los datos de esta visita están bloqueados. El IP del centro o la coordinación pueden reabrirla indicando el motivo; la reapertura queda registrada.</Notice> : null}
       <VisitForm data={data} canWrite={ROLE_CAN.writeClinical(session.role) && !closed} reload={load} userId={session.userId} />

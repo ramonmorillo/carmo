@@ -7,6 +7,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { pairIexpac } from '../domain/iexpac';
 import { fmtNum } from '../lib/format';
+import { patientCode } from '../domain/study';
 import { carmo, type Administration, type Instrument, type Patient, type Visit } from '../services/carmoData';
 
 export function QuestionnairesPage() {
@@ -38,7 +39,7 @@ export function QuestionnairesPage() {
           {included.map((p) => {
             const b = adminAt(visitOf(p.id, 'BASAL')); const f = adminAt(visitOf(p.id, 'FINAL'));
             const pair = pairIexpac(b?.status === 'completed' ? b.scores?.global : null, f?.status === 'completed' ? f.scores?.global : null);
-            return <tr key={p.id}><td><Link to={`/patients/${p.id}`}>{p.study_code}</Link></td><td>{cell(visitOf(p.id, 'BASAL'))}</td><td>{cell(visitOf(p.id, 'FINAL'))}</td><td className="numeric">{pair.paired ? fmtNum(pair.difference) : '—'}</td></tr>;
+            return <tr key={p.id}><td><Link to={`/patients/${p.id}`}>{patientCode(p)}</Link></td><td>{cell(visitOf(p.id, 'BASAL'))}</td><td>{cell(visitOf(p.id, 'FINAL'))}</td><td className="numeric">{pair.paired ? fmtNum(pair.difference) : '—'}</td></tr>;
           })}
         </tbody></table></div>
         {included.length === 0 ? <p className="text-muted">Sin pacientes incluidos.</p> : null}

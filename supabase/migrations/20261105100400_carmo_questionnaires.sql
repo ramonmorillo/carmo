@@ -25,12 +25,12 @@ create table public.carmo_instruments (
 
 insert into public.carmo_instruments (code, version, status, item_count, item_min, item_max, has_vas, scoring_version, allowed_visits, source_reference, notes) values
   ('IEXPAC', 'IEXPAC-11', 'active', 11, 1, 5, false, 'carmo-iexpac-1', array['BASAL', 'FINAL'],
-   'Encargo §6 (protocolo v3.0): 11 ítems, 5 opciones, IEXPAC = 10 × (Σ − 11) / 44',
-   'Codificación 1-5 en el orden de las opciones del instrumento (verificar sentido con la versión autorizada). Ítems condicionados adicionales del IEXPAC no contemplados (no citados en el encargo).'),
-  ('EQ5D3L', 'pendiente', 'pending_specification', 5, 1, 3, true, null, array['BASAL', 'FINAL'], 'Encargo §6', 'Verificar si el protocolo usa 3L o 5L y la licencia EuroQol.'),
-  ('EQ5D5L', 'pendiente', 'pending_specification', 5, 1, 5, true, null, array['BASAL', 'FINAL'], 'Encargo §6', 'Verificar si el protocolo usa 3L o 5L y la licencia EuroQol.'),
-  ('EVASAF', 'pendiente', 'pending_specification', 1, 1, 5, false, null, array['BASAL', 'FINAL'], 'Encargo §6', 'Número de ítems, escala y regla de resultado pendientes de la versión del protocolo.'),
-  ('MORISKY_GREEN', 'pendiente', 'pending_license', 4, 0, 1, false, null, array['BASAL', 'S12', 'S24', 'S36', 'S48', 'FINAL'], 'Encargo §6', 'Versión, licencia y criterio de adherencia pendientes.');
+   'Protocolo v3.0, Objetivo primario: Siempre=5, Casi siempre=4, A veces=3, Casi nunca=2, Nunca=1; global = 10 × (Σ11 − 11) / 44',
+   'Puntuación condicional (plataforma IEXPAC) citada pero no especificada: no implementada. Final: evaluador externo al equipo investigador.'),
+  ('EQ5D3L', 'pendiente', 'pending_specification', 5, 1, 3, true, null, array['BASAL', 'FINAL'], 'Protocolo v3.0: EuroQoL-5D, 5 dimensiones + EVA 0-100', 'El protocolo no indica 3L o 5L ni la tarifa: pendiente de versión y licencia EuroQol.'),
+  ('EQ5D5L', 'pendiente', 'pending_specification', 5, 1, 5, true, null, array['BASAL', 'FINAL'], 'Protocolo v3.0: EuroQoL-5D, 5 dimensiones + EVA 0-100', 'El protocolo no indica 3L o 5L ni la tarifa: pendiente de versión y licencia EuroQol.'),
+  ('EVASAF', 'pendiente', 'pending_specification', 1, 1, 5, false, null, array['BASAL', 'FINAL'], 'Protocolo v3.0: EVASAF (Farm Hosp 2015;39(3)), «ADJUNTO»', 'El documento adjunto no se ha aportado: número de ítems, escala y resultado pendientes de verificar.'),
+  ('MORISKY_GREEN', 'pendiente', 'pending_license', 4, 0, 1, false, null, array['BASAL', 'S24', 'FINAL'], 'Protocolo v3.0: test de Morisky-Green (%); valoración de adherencia en visita inicial, S24 y final', 'Versión, licencia y criterio de adherente pendientes.');
 
 create table public.carmo_questionnaire_administrations (
   id uuid primary key default gen_random_uuid(),
@@ -51,6 +51,7 @@ create table public.carmo_questionnaire_administrations (
   scoring_version text,
   evaluator_id uuid references public.carmo_profiles(id) on delete set null,
   evaluator_role text,
+  evaluator_conformity text check (evaluator_conformity in ('conform', 'not_conform', 'not_applicable')),
   revision integer not null default 1,
   correction_reason text,
   completed_at timestamptz,
@@ -116,6 +117,7 @@ begin
     new.instrument_version := old.instrument_version;
     new.evaluator_id := old.evaluator_id;
     new.evaluator_role := old.evaluator_role;
+    new.evaluator_conformity := old.evaluator_conformity;
   else
     if v_inst.status <> 'active' then
       raise exception 'El instrumento % no está habilitado (%): pendiente de versión/licencia/puntuación validadas.', new.instrument_code, v_inst.status;
@@ -128,6 +130,12 @@ begin
     new.revision := 1;
     new.evaluator_id := auth.uid();
     new.evaluator_role := carmo_private.my_role();
+    -- Protocolo v3.0: el IEXPAC final lo cumplimenta un miembro de un equipo externo al equipo
+    -- investigador. Se registra la conformidad, sin bloquear (texto contradictorio sobre el basal, RG-32).
+    new.evaluator_conformity := case
+      when new.instrument_code = 'IEXPAC' and v_visit.visit_code = 'FINAL'
+        then case when new.evaluator_role = 'external_evaluator' then 'conform' else 'not_conform' end
+      else 'not_applicable' end;
     new.correction_reason := null;
   end if;
   perform carmo_private.assert_visit_open(new.visit_id);

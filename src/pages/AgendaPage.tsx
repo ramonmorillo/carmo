@@ -6,7 +6,7 @@ import { LoadingState } from '../components/ui/LoadingState';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { WINDOW_STATUS_LABELS, isOverdue, type WindowStatus } from '../domain/schedule';
-import { RECORD_STATE_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS } from '../domain/study';
+import { patientCode, RECORD_STATE_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS } from '../domain/study';
 import { fmtDate, label, todayIso } from '../lib/format';
 import { carmo, type Patient, type Visit, type VisitWindow } from '../services/carmoData';
 
@@ -20,7 +20,7 @@ export function AgendaPage() {
   if (error) return <ErrorState message={error} />;
   if (!data) return <LoadingState label="Cargando agenda…" />;
   const today = todayIso();
-  const code = (id: string) => data.patients.find((p) => p.id === id)?.study_code ?? '—';
+  const code = (id: string) => { const p = data.patients.find((x) => x.id === id); return p ? patientCode(p) : '—'; };
   const win = (id: string) => data.windows.find((w) => w.visit_id === id);
   const rows = data.visits.filter((v) => scope === 'all' || v.status === 'planned').sort((a, b) => (a.planned_date ?? '').localeCompare(b.planned_date ?? ''));
   return (

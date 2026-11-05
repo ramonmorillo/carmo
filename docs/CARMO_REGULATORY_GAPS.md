@@ -1,68 +1,83 @@
 # CARMO · Registro de discrepancias regulatorias y decisiones pendientes
 
-Versión del registro: 0.1 · 05/11/2026 · Estado: **abierto**. Los códigos RG-xx se citan en el código y en las migraciones.
+Versión del registro: **0.2 · 05/11/2026** · Estado: **abierto**. Los códigos RG-xx se citan en el código y en las migraciones.
 
-> **Nada de lo implementado está amparado automáticamente por el dictamen favorable del CEIm de Galicia (registro 2025/330).**
-> Este registro enumera lo que debe validarse con el promotor (Fundación Española de Farmacia Hospitalaria) y, cuando proceda, con el CEIm, **antes** de introducir datos reales.
+> **Nada de lo implementado está amparado automáticamente por el dictamen favorable del CEIm-G (registro 2025/330).**
+> Hay que validar con el promotor (FEFH) y, cuando proceda, con el CEIm-G **antes** de introducir datos reales.
 
-## Hecho de partida que condiciona todo el registro
+## 0. Fuentes contrastadas
 
-Los documentos `Protocolo versión 3 de investigación CARMO.docx` y `CEImG FAVORABLE.pdf` **no estaban disponibles en el entorno de desarrollo**. Los busqué en el sistema de ficheros y en Google Drive, sin resultado. Toda referencia al protocolo procede del resumen incluido en el encargo de desarrollo del 05/11/2026. En consecuencia:
+Los documentos originales no se versionan en el repositorio porque es público y el protocolo contiene una cláusula de confidencialidad.
 
-- ninguna variable tiene todavía página de origen verificada (el diccionario lo marca como `pendiente`);
-- los elementos cuyo dominio no consta en el resumen quedan **bloqueados**, no inventados.
+| Documento | Datos objetivos relevantes |
+|---|---|
+| **Dictamen del CEIm-G**, firmado el 15/09/2025 | Reunión del **24/07/2025**. **Protocolo v2.0 de 18/08/2025**; **HIP/CI v1.0 de 17/06/2025**. Centros: **C.H.U. de A Coruña y C.H.U. de Santiago**. Investigadores: **María José Mauriz Montero (coordinadora)** y la investigadora del C.H.U. de Santiago. Tipo de estudio: «Outros». Informe favorable |
+| **Protocolo v3.0**, 12/09/2025 (aportado por el IP) | Coordinación: Mauriz Montero y Morillo Verdugo. **14 centros**. HIP/CI v3.0. CRDe = **REDCap** suministrado por el promotor; código de paciente de 3+2 cifras. Reclutamiento de 10/2025 a 12/2025, seguimiento hasta 12/2026 y fin en 06/2027 |
+| Documento del modelo CMO cardiovascular | **Pendiente**: el IP lo enviará en Markdown |
 
-## A. Documentación y gobierno del estudio
+## A. Gobierno del estudio y documentación aprobada
 
-| Código | Discrepancia / decisión pendiente | Dato objetivo | Implicación | Estado en CARMO | Quién decide |
+| Código | Discrepancia | Dato objetivo | Implicación (interpretación) | Estado en CARMO | Decide |
 |---|---|---|---|---|---|
-| RG-01 | El dictamen menciona una versión documental distinta de la v3.0 del protocolo | Encargo §2 | No consta qué versión aprobó el CEIm; la herramienta no puede presumir la v3.0 | La página «Proyecto» muestra la nota; ningún texto afirma la aprobación de la v3.0 | Promotor + CEIm |
-| RG-02 | El protocolo identifica **REDCap** como eCRD; CARMO lo sustituiría | Encargo §2 | Cambio de sistema de recogida, de encargado de tratamiento y de ubicación de los datos: probablemente exige **modificación relevante** o, como mínimo, una notificación al CEIm, y la actualización de la HIP/CI si esta menciona REDCap | Modo `validation` (solo datos sintéticos) hasta resolverlo | Promotor + CEIm + DPD |
-| RG-03 | Cambio en el equipo: María José Mauriz Montero no participa; Ramón Alejandro Morillo Verdugo es la referencia de coordinación científica de la herramienta | Encargo §2 | Si la Dra. Mauriz figuraba como investigadora o coordinadora en los documentos aprobados, el cambio debe comunicarse según el procedimiento del CEIm. **No se presenta como modificación aprobada** | No existe ningún usuario, centro ni contacto suyo en CARMO. Los documentos históricos no se alteran | Promotor + CEIm |
-| RG-27 | El repositorio `ramonmorillo/carmo` es **público** | API de GitHub, 05/11/2026 | El protocolo, el dictamen y los textos de los instrumentos no deben publicarse | No se ha versionado ningún documento regulatorio ni ningún enunciado de instrumento. Se recomienda hacer privado el repositorio | IP |
-| RG-29 | Plazo de conservación, archivo y destrucción de los datos | No consta en el resumen | Necesario para la política de datos | No implementado | Promotor |
+| RG-01 | La versión aprobada no es la v3.0 | El dictamen cubre el protocolo v2.0 (18/08/2025) y la HIP/CI v1.0. El protocolo v3.0 (12/09/2025) y la HIP/CI v3.0 son posteriores. Además, la fecha de la v2.0 es posterior a la reunión (24/07/2025), lo que hace pensar en una aprobación tras aclaraciones | Hace falta el dictamen de la **modificación** que cubre la v3.0 y la HIP/CI v3.0. Sin él, los cambios de la v3.0 (centros, coordinación) no constan como aprobados | La v3.0 es la fuente técnica del eCRD, pero todo está en estado provisional o borrador hasta la conciliación | Promotor + CEIm-G |
+| RG-31 | **Centros fuera del dictamen** | El dictamen solo cita CHUAC y CHUS. La v3.0 añade 12 centros, entre ellos Valme | No hay constancia de cobertura ética ni de conformidad del centro (el protocolo exige contrato o conformidad) para 12 centros | Se registran los **14 centros como «pendiente de autorización» e inactivos**, sin código. Ninguno puede incluir pacientes | Promotor + CEIm-G |
+| RG-03 | Cambio de coordinación | El dictamen nombra a la Dra. Mauriz **coordinadora única**. La v3.0 añade a R. A. Morillo Verdugo. La HIP/CI v3.0 la cita como coordinadora, contacto (teléfono y correo) y destinataria de los datos seudonimizados. El IP comunica que no participará | Su salida modifica la coordinación aprobada, el contacto y el destinatario de los datos en la HIP/CI, y quizá la participación de CHUAC. **No es una modificación aprobada** | No existe ningún usuario ni contacto suyo en CARMO. CHUAC queda pendiente | Promotor + CEIm-G |
+| RG-02 | **REDCap → CARMO** | El protocolo establece REDCap como CRDe, suministrado por el promotor, y que REDCap asigna el código de centro | Cambio del sistema de recogida, del responsable o encargado y de la ubicación de los datos: probablemente es una modificación relevante. Hay que revisar la HIP/CI | Modo `validation` (solo datos sintéticos) | Promotor + CEIm-G + DPD |
+| RG-33 | **El calendario del protocolo ya ha vencido** | Reclutamiento previsto de 10/2025 a 12/2025; fin del seguimiento 12/2026. Hoy es 05/11/2026 | O **ya hay pacientes reclutados** (¿en REDCap?), y entonces CARMO necesita un plan de migración o de convivencia, o hay que enmendar el calendario | Sin cambios hasta saberlo | IP + Promotor |
+| RG-34 | Responsable del tratamiento y destinatarios | Según la HIP/CI, el responsable es la institución donde se investiga y los datos se envían seudonimizados a los coordinadores | Una base central en Supabase (proyecto compartido con DERMAPEX y COAMO, en una cuenta personal u organizativa) necesita contrato de encargo, EIPD e información coherente en la HIP/CI | Ver RG-09 | Promotor + DPD |
+| RG-37 | Confidencialidad frente a repositorio público | El protocolo prohíbe divulgar su contenido sin permiso escrito del promotor. `ramonmorillo/carmo` es público | En el repositorio solo hay un diccionario de variables genéricas y la paráfrasis de los criterios (necesarios para el eCRD), sin texto literal del protocolo ni de los instrumentos. **Requiere el visto bueno del promotor o un repositorio privado** (ver §F) | Sin documentos originales en el repositorio | IP + Promotor |
+| RG-29 | Conservación | El CI recoge la elección del participante: datos eliminados o conservados seudonimizados al terminar | Plazo legal y procedimiento de borrado pendientes | `carmo_consents.future_use_choice` implementado; el borrado no está implementado | Promotor |
 
 ## B. Diseño, calendario y población
 
-| Código | Pendiente | Situación actual (provisional) |
+| Código | Pendiente | Situación en CARMO (calendario `CARMO-CAL-0.2`, provisional) |
 |---|---|---|
-| RG-04 | Ventanas de las visitas de las semanas 12, 24, 36 y 48 no especificadas; interpretación de «evaluación inicial, semanas 1-4» | Calendario `CARMO-CAL-0.1` (provisional, versionado): inicial = días 0-27 desde la inclusión; S12/24/36/48 = inclusión + 84/168/252/336 días **sin ventana** (se muestra «ventana no definida», nunca «fuera de ventana») |
-| RG-05 | Relación entre la semana 48 y la visita final «12 meses ±28 días», y referencia temporal (inclusión o evaluación inicial) | Ambas visitas existen por separado; 12 meses ≈ 365 días desde la inclusión, ventana ±28 días. Si son la misma visita, se crea una nueva versión del calendario |
-| RG-06 | Criterios de inclusión y exclusión no transcritos | Tablas versionadas `carmo_eligibility_sets/criteria` **vacías**: **la inclusión es imposible** hasta cargar y validar el conjunto (fuente, sección y página obligatorias) |
-| RG-07 | La lista de centros debe contrastarse con la relación autorizada | **No se ha creado ningún centro**. Un centro solo incluye pacientes si consta `authorized` con referencia documental y está activo |
-| RG-08 | Centro de la Dra. Mauriz | No se crea ni se activa por defecto (ver RG-07) |
-| RG-30 | Tamaño muestral 135 | Configurable en `carmo_private.study_config` (no está en el código) |
-| RG-12 | Motivos de no inclusión, retirada y pérdida | Vocabulario técnico provisional; validar |
+| RG-05 | **Visita final: S48 o 12 meses ±28 días.** La tabla del protocolo pone la visita final en S48 (día 336) y el análisis habla de «48 semanas», mientras que el texto, la HIP y el procedimiento dicen 12 meses ±28 días (días 337-393). **S48 cae un día fuera de esa ventana** | Se adopta el texto: FINAL = inclusión + 365 ±28. S48 no se programa |
+| RG-04 | Ventanas de S12, S24 y S36 no definidas. El seguimiento depende de la prioridad CMO | Sin ventana («no definida»). Se revisará con el documento CMO (RG-21) |
+| RG-06 | Criterios de selección | **Transcritos (paráfrasis) del protocolo v3.0**: 4 de inclusión y 2 de exclusión (`CARMO-SEL-P3.0`), en **BORRADOR**. Activación tras confirmar que coinciden con la v2.0 aprobada (SQL en CARMO_GO_LIVE_CHECKLIST) |
+| RG-38 | «Mayores de 18 años»: ¿>18 o ≥18? | Edad admitida a partir de 18; confirmar |
+| RG-35 | Código de paciente | Implementado según el protocolo: `<CCC>-<PP>` (centro de 3 cifras + 2 cifras consecutivas por orden de inclusión, máximo 99 por centro). El código de centro lo fijaba REDCap: **si ya existen códigos REDCap, reutilizarlos**. Los candidatos llevan un código de selección `SEL-CCC-NNN` (técnico) |
+| RG-36 | «Solo un investigador principal por centro» | Aplicado en la BD |
+| RG-07/08 | Centros | Ver RG-31 |
+| RG-12 | Motivos de no inclusión, retirada y pérdida | Vocabulario técnico provisional |
+| RG-30 | Tamaño muestral 135 (122 + 10 % de pérdidas) | Configurable |
 
 ## C. Variables e instrumentos
 
-| Código | Pendiente | Situación actual |
+| Código | Pendiente | Situación |
 |---|---|---|
-| RG-23 | Variables demográficas y sociosanitarias, y antecedentes de tratamiento: no detalladas en el resumen. Dominio de tabaquismo. Método y unidad de LDL-c y colesterol no-HDL | Sin sembrar (ver diccionario §3). `smoking` **bloqueada**. LDL/no-HDL admiten mg/dL o mmol/L tal como se registren, sin conversión |
-| RG-19 | IEXPAC: versión autorizada, sentido de la codificación 1-5, ítems condicionados, regla de puntuación condicional | Implementados los 11 ítems con la fórmula del encargo; sin puntuación con ítems incompletos y sin regla condicional |
-| RG-16 | EQ-5D: 3L o 5L, modalidad, licencia EuroQol, tarifa de valores | Registrados `EQ5D3L` y `EQ5D5L` como *pending_specification*: no admiten datos. Sin índice de utilidad |
-| RG-17 | EVASAF: versión, número de ítems, escala y resultado derivado | *pending_specification* |
-| RG-18 | Morisky-Green: versión y **licencia** (algunas versiones de Morisky tienen licencia restrictiva), criterio de adherencia | *pending_license* |
-| RG-20 | Adherencia por dispensación: método (PDC/MPR u otro), ventana, umbral y tratamiento de los solapamientos | Se registran dispensaciones (fecha, unidades, días de cobertura); **no se calcula** ningún indicador |
-| RG-21 | **Documento oficial de adaptación del modelo CMO a la patología cardiovascular (MAPEX-SEFH) no localizado** (búsqueda web del 05/11/2026 sin resultado) | Motor genérico implementado y probado con un modelo ficticio; cálculo clínico **desactivado en la BD** (solo admite modelos `validated`) |
-| RG-22 | Taxonomía oficial de intervenciones CMO cardiovascular | Catálogo vacío: el registro de intervenciones está bloqueado |
-| RG-15 | Taxonomía de problemas relacionados con medicamentos | Sí/no + texto libre provisional |
+| RG-23 | Variables transcritas de «Valoración de los objetivos» | Sembradas en estado provisional (ver diccionario). Siguen abiertos: el método y la unidad del LDL-c y del colesterol no-HDL; el tipo de diabetes; el criterio diagnóstico de HCF |
+| RG-39 | «Patología» y «pacientes naïve» (variable exploratoria) | Patología = 2 indicadores (HCF; prevención secundaria). `naive_patient` es provisional: **falta la definición operativa** |
+| RG-19 | IEXPAC | Codificación confirmada por el protocolo (Siempre = 5 … Nunca = 1) y fórmula global implementada. La **puntuación condicional** se cita pero no se especifica: no está implementada |
+| RG-32 | **Quién cumplimenta el IEXPAC** | El protocolo se contradice. Un pasaje dice que el inicial se hace con el farmacéutico que incluye y el final con un evaluador externo; otro dice que el IEXPAC y la satisfacción de las semanas 0 y 48 los hace el equipo externo. Implementado: se registra el rol del evaluador y la conformidad en el IEXPAC final (externo = conforme). **No bloquea** |
+| RG-16 | EQ-5D: 3L o 5L, licencia, tarifa | El protocolo no lo precisa. Sigue bloqueado |
+| RG-17 | EVASAF | El protocolo la cita como «ADJUNTO», pero el adjunto no se ha aportado. Tampoco se pudo consultar la publicación de Farm Hosp 2015 (dominio scielo.isciii.es no permitido en este entorno). Bloqueado |
+| RG-40 | Morisky-Green «(%)» en las visitas inicial, S24 y final | Versión (¿4 ítems, Morisky-Green-Levine?), licencia y criterio de adherente pendientes. Bloqueado |
+| RG-20 | Adherencia por dispensaciones | Método, ventana y umbral no especificados. Se registran las dispensaciones; no se calcula nada |
+| RG-21 | Modelo CMO cardiovascular (tablas 1-7 del documento de adaptación) | **Pendiente de recibir.** Cálculo desactivado |
+| RG-22 | Taxonomía de intervenciones (3 ámbitos: seguimiento farmacoterapéutico, formación y educación, coordinación con el equipo; tablas 5-7) | Pendiente del documento CMO |
+| RG-15 | Problemas relacionados con medicamentos | No los define el protocolo |
 
-## D. Protección de datos y arquitectura de tratamiento
+## D. Protección de datos
 
-| Código | Pendiente | Observación |
-|---|---|---|
-| RG-09 | **Proyecto Supabase compartido** con DERMAPEX y COAMO (Auth común, misma base de datos, región `eu-west-1`) | El aislamiento es lógico (RLS, privilegios, autorización por aplicación), está probado y documentado (CARMO_ARCHITECTURE §4), pero el responsable o encargado del tratamiento, el contrato con Supabase, la EIPD/DPIA y la información de la HIP/CI deben cubrir este uso. Residual: el trigger `trg_auth_users_create_profile` de DERMAPEX crea un perfil DERMAPEX para toda cuenta de Auth, aunque sin acceso por la barrera `app_access` |
-| RG-10 | Política tras la retirada del consentimiento (¿se conservan y analizan los datos ya recogidos?) | Los datos se conservan y se marcan `stop_followup_data_pending_decision`; no se borran |
-| RG-11 | Criterios para pasar de `validation` a `production` | Ver CARMO_GO_LIVE_CHECKLIST.md |
-| RG-13 | Identificación de la versión de la HIP/CI aprobada | Texto libre obligatorio en cada consentimiento |
-| RG-14 | Exportación de texto libre (evolución, intervenciones, desviaciones) | Excluido de la exportación por riesgo de reidentificación |
+| Código | Pendiente |
+|---|---|
+| RG-09 | Proyecto Supabase compartido (Auth común, eu-west-1). Aislamiento lógico probado. Necesita EIPD, contrato de encargo y coherencia con la HIP/CI (RG-34). Riesgo residual: el trigger de DERMAPEX crea perfiles DERMAPEX sin acceso |
+| RG-10 | Uso de los datos tras la retirada del consentimiento. La HIP/CI permite retirarse, pero no dice qué pasa con lo ya recogido. CARMO conserva y marca |
+| RG-13 | Versión de la HIP/CI en cada consentimiento (texto obligatorio). Aprobada: v1.0; protocolo: v3.0 |
+| RG-14 | Texto libre excluido de la exportación |
+| RG-42 | El protocolo habla de «total disociación» gracias al código, pero son datos **seudonimizados** (la HIP/CI lo expresa bien) y siguen siendo datos personales |
 
 ## E. Técnica con impacto en otros estudios
 
-| Código | Pendiente | Observación |
-|---|---|---|
-| RG-25 | La migración `20261105100000_carmo_app_access.sql` amplía el CHECK de `app_private.app_access` (objeto **compartido**) con `'carmo'` | Es aditiva y verifica el estado previo. **Requiere aprobación explícita** antes de aplicarse en producción |
-| RG-26 | La prueba `db-tests/40_app_access_isolation.sql` de DERMAPEX considera tabla DERMAPEX toda tabla de `public` sin el prefijo `coag_`: con las tablas `carmo_*` falla | No se ha modificado DERMAPEX. `scripts/test-db.sh` de CARMO ejecuta una copia que excluye `carmo_`. El cambio de una línea en DERMAPEX necesita autorización |
-| RG-24 | `.sav` nativo | Se entregan CSV + sintaxis `.sps`; `.sav` pendiente |
-| RG-28 | Alcance del monitor (por centro asignado) y escritura de la coordinación (puede registrar en todos los centros) | Decisiones técnicas provisionales; confirmar |
+| Código | Pendiente |
+|---|---|
+| RG-25 | Ampliar el CHECK de `app_private.app_access` con `'carmo'` (objeto compartido): **requiere aprobación** |
+| RG-26 | Cambio de una línea en `dermapex/db-tests/40_*` para excluir `carmo_` |
+| RG-24 | `.sav` nativo: el análisis previsto usa IBM SPSS 29. Hoy se entregan CSV + sintaxis `.sps` |
+| RG-43 | «Revisión y aprobación del CRDe mediante su firma»: en CARMO equivale al cierre por el IP con trazabilidad. **No es firma electrónica cualificada** |
+| RG-28 | El alcance del monitor (por centro) y la escritura de la coordinación son decisiones técnicas que hay que confirmar |
+
+## F. Repositorio privado y coste
+
+Hacer privado el **repositorio de GitHub** no depende de Supabase ni exige Supabase Pro: la base de datos es la misma en ambos casos. El coste aparece porque **GitHub Pages** solo publica desde repositorios privados con un plan de pago de GitHub. Alternativas sin coste, a valorar: publicar desde el repositorio privado en un hosting estático gratuito que admita repositorios privados (Cloudflare Pages, Netlify, o Vercel Hobby si el uso no comercial lo permite), o mantenerlo público con el visto bueno del promotor (RG-37).

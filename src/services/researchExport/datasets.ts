@@ -20,7 +20,8 @@ const RAW_TABLES = {
     ['study_number', 'integer', 'Número de estudio'], ['participation_status', 'string', 'Estado de participación'], ['is_active', 'boolean', 'Activo'],
   ] as RawCol[] },
   patients: { table: 'carmo_patients', title: 'Pacientes (tabla original)', grain: 'paciente', cols: [
-    ['id', 'string', 'Identificador interno estable'], ['center_id', 'string', 'Centro (id)'], ['study_code', 'string', 'Código seudonimizado'],
+    ['id', 'string', 'Identificador interno estable'], ['center_id', 'string', 'Centro (id)'], ['screening_code', 'string', 'Código de selección'],
+    ['study_code', 'string', 'Código de paciente (protocolo)'], ['inclusion_seq', 'integer', 'Orden de inclusión en el centro'],
     ['status', 'string', 'Estado en el estudio'], ['status_reason', 'string', 'Motivo del estado'], ['screening_date', 'date', 'Fecha de cribado'],
     ['inclusion_date', 'date', 'Fecha de inclusión'], ['is_synthetic', 'boolean', 'Dato sintético (fase de validación)'], ['eligibility_set_id', 'string', 'Versión de criterios (id)'],
     ['created_at', 'datetime', 'Alta en el sistema'],
@@ -28,6 +29,7 @@ const RAW_TABLES = {
   consents: { table: 'carmo_consents', title: 'Consentimientos', grain: 'consentimiento', cols: [
     ['id', 'string', 'Id'], ['patient_id', 'string', 'Paciente (id)'], ['document_version', 'string', 'Versión documental'], ['signed_date', 'date', 'Fecha de firma'],
     ['status', 'string', 'Estado'], ['withdrawal_date', 'date', 'Fecha de retirada'], ['withdrawal_scope', 'string', 'Alcance de la retirada'],
+    ['future_use_choice', 'string', 'Destino de los datos al terminar (CI)', { delete: 'Eliminados', keep_pseudonymized: 'Conservados seudonimizados' }],
   ] as RawCol[] },
   visits: { table: 'carmo_visits', title: 'Visitas (tabla original)', grain: 'visita', cols: [
     ['id', 'string', 'Id de visita'], ['patient_id', 'string', 'Paciente (id)'], ['visit_code', 'string', 'Visita'], ['planned_date', 'date', 'Fecha prevista'],
@@ -55,7 +57,8 @@ const RAW_TABLES = {
     ['instrument_version', 'string', 'Versión del instrumento'], ['status', 'string', 'Estado'], ['not_done_reason', 'string', 'Motivo de no realización'],
     ['administration_mode', 'string', 'Modalidad'], ['data_source', 'string', 'Soporte'], ['administration_date', 'date', 'Fecha'],
     ['responses', 'json', 'Respuestas (original)'], ['items_answered', 'integer', 'Ítems respondidos'], ['scores', 'json', 'Puntuaciones (BD)'],
-    ['scoring_version', 'string', 'Versión de puntuación'], ['evaluator_role', 'string', 'Rol del evaluador'], ['revision', 'integer', 'Revisión'],
+    ['scoring_version', 'string', 'Versión de puntuación'], ['evaluator_role', 'string', 'Rol del evaluador'],
+    ['evaluator_conformity', 'string', 'Evaluador conforme con el protocolo (IEXPAC final externo)'], ['revision', 'integer', 'Revisión'],
   ] as RawCol[] },
   treatments: { table: 'carmo_treatments', title: 'Tratamientos', grain: 'tratamiento', cols: [
     ['id', 'string', 'Id'], ['patient_id', 'string', 'Paciente (id)'], ['active_ingredient', 'string', 'Principio activo'],
@@ -158,11 +161,12 @@ export function buildDatasets(raw: RawData, todayIso: string): BuildResult {
     }
     const included = ['included', 'withdrawn', 'lost_to_followup', 'completed'].includes(String(p.status));
     patientRows.push({
-      study_code: p.study_code, center_code: centerCode.get(String(p.center_id)) ?? null, status: p.status, status_reason: p.status_reason ?? null,
-      inclusion_date: p.inclusion_date ?? null, is_synthetic: p.is_synthetic, pob_incluidos: included,
-      pob_iexpac_pareada: included && iex.paired,
+      screening_code: p.screening_code, study_code: p.study_code ?? null, center_code: centerCode.get(String(p.center_id)) ?? null, status: p.status, status_reason: p.status_reason ?? null,
+      inclusion_date: p.inclusion_date ?? null, is_synthetic: p.is_synthetic, pob_itt: included,
+      pob_pp: p.status === 'completed', pob_iexpac_pareada: included && iex.paired,
       fecha_basal: basal?.actual_date ?? null, fecha_final: final?.actual_date ?? null,
     });
+    if (!p.study_code) continue;
     const row: Row = { study_code: p.study_code, iexpac_basal: iex.baseline, iexpac_final: iex.final, iexpac_dif: iex.difference };
     for (const v of LONGITUDINAL_NUMERIC) {
       const ch = numericChange(obsAt(pid, basal?.id as string | undefined, v), obsAt(pid, final?.id as string | undefined, v));
@@ -194,12 +198,14 @@ export function buildDatasets(raw: RawData, todayIso: string): BuildResult {
 
   const c = (name: string, type: ColumnType, label: string, source: string, extra: Partial<ColumnSpec> = {}): ColumnSpec => ({ name, type, label, source, ...extra });
   datasets.push({
-    id: 'pacientes', folder: 'analisis', title: 'Pacientes', grain: 'Una fila por sujeto', key: ['study_code'], rows: patientRows,
+    id: 'pacientes', folder: 'analisis', title: 'Pacientes', grain: 'Una fila por sujeto seleccionado', key: ['screening_code'], rows: patientRows,
     columns: [
-      c('study_code', 'string', 'Código seudonimizado', 'carmo_patients.study_code'), c('center_code', 'string', 'Centro', 'carmo_centers.code'),
+      c('screening_code', 'string', 'Código de selección', 'carmo_patients.screening_code'),
+      c('study_code', 'string', 'Código de paciente (protocolo)', 'carmo_patients.study_code'), c('center_code', 'string', 'Centro', 'carmo_centers.code'),
       c('status', 'string', 'Estado', 'carmo_patients.status'), c('status_reason', 'string', 'Motivo del estado', 'carmo_patients.status_reason'),
       c('inclusion_date', 'date', 'Fecha de inclusión', 'carmo_patients.inclusion_date'), c('is_synthetic', 'boolean', 'Dato sintético', 'carmo_patients.is_synthetic'),
-      c('pob_incluidos', 'boolean', 'Población: incluidos', 'derivada', { rule: 'estado ∈ {incluido, retirado, pérdida, finalizado}' }),
+      c('pob_itt', 'boolean', 'Población por intención de tratar', 'derivada', { rule: 'Protocolo: todos los incluidos, aunque no terminen el seguimiento (estado ∈ {incluido, retirado, pérdida, finalizado})' }),
+      c('pob_pp', 'boolean', 'Población por protocolo', 'derivada', { rule: 'Protocolo: incluidos que completan los 12 meses (estado = finalizado)' }),
       c('pob_iexpac_pareada', 'boolean', 'Población: IEXPAC basal y final válidos', 'derivada', { rule: 'incluido y puntuación IEXPAC global válida en BASAL y FINAL realizadas' }),
       c('fecha_basal', 'date', 'Fecha evaluación inicial', 'carmo_visits.actual_date (BASAL)'), c('fecha_final', 'date', 'Fecha visita final', 'carmo_visits.actual_date (FINAL)'),
     ],
@@ -222,7 +228,7 @@ export function buildDatasets(raw: RawData, todayIso: string): BuildResult {
     c('imc_basal', 'decimal', 'IMC basal (kg/m²)', 'derivada', { rule: 'peso (kg) / (talla (cm)/100)²', unit: 'kg/m2' }),
     c('imc_final', 'decimal', 'IMC final (kg/m²)', 'derivada', { rule: 'peso (kg) / (talla (cm)/100)²', unit: 'kg/m2' }),
   );
-  datasets.push({ id: 'longitudinal_pareado', folder: 'analisis', title: 'Basal y final emparejados', grain: 'Una fila por sujeto', key: ['study_code'], rows: longRows, columns: longCols });
+  datasets.push({ id: 'longitudinal_pareado', folder: 'analisis', title: 'Basal y final emparejados (Wilcoxon pareado; casos completos)', grain: 'Una fila por sujeto incluido', key: ['study_code'], rows: longRows, columns: longCols });
   datasets.push({
     id: 'cuestionarios_items', folder: 'analisis', title: 'Respuestas por ítem', grain: 'Una fila por ítem respondido', key: ['administration_id', 'item'], rows: itemRows,
     columns: [
