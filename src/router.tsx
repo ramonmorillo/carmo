@@ -9,6 +9,7 @@ import { InterventionsPage } from './pages/InterventionsPage';
 import { LoginPage } from './pages/LoginPage';
 import { PatientDetailPage } from './pages/PatientDetailPage';
 import { PatientsPage } from './pages/PatientsPage';
+import { PatientStratificationPage } from './pages/PatientStratificationPage';
 import { ProjectPage } from './pages/ProjectPage';
 import { QuestionnaireFormPage } from './pages/QuestionnaireFormPage';
 import { QuestionnairesPage } from './pages/QuestionnairesPage';
@@ -28,6 +29,7 @@ export const router = createHashRouter([
       { path: '/dashboard', element: <HomePage /> },
       { path: '/patients', element: <PatientsPage /> },
       { path: '/patients/:id', element: <PatientDetailPage /> },
+      { path: '/patients/:id/stratification', element: <PatientStratificationPage /> },
       { path: '/visits/:visitId', element: <VisitPage /> },
       { path: '/visits/:visitId/questionnaires/:instrument', element: <QuestionnaireFormPage /> },
       { path: '/agenda', element: <AgendaPage /> },

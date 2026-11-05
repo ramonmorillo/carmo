@@ -34,8 +34,9 @@ export function HomePage() {
       read<{ id: string; visit_id: string; patient_id: string; instrument_code: string; status: string; scores: { global?: number | null; valid?: boolean; vas?: number | null; adherent?: boolean | null } | null }>('carmo_questionnaire_administrations', 'id,visit_id,patient_id,instrument_code,status,scores'),
       clinical ? read<{ id: string; supersedes_id: string | null; patient_id: string; visit_id: string | null; variable_code: string; value_numeric: number | null; unit: string | null; is_missing: boolean }>('carmo_observations', 'id,supersedes_id,patient_id,visit_id,variable_code,value_numeric,unit,is_missing') : Promise.resolve([]),
       clinical ? read<{ id: string }>('carmo_interventions', 'id') : Promise.resolve([]),
-    ]).then(([patients, visits, administrations, observations, interventions]) =>
-      setDash(computeDashboard({ patients, visits, administrations, observations, interventions: interventions.length, today: todayIso() })))
+      clinical ? read<{ id: string; patient_id: string; supersedes_id: string | null; final_priority: number | null; calculated_priority: number }>('carmo_stratifications', 'id,patient_id,supersedes_id,final_priority,calculated_priority') : Promise.resolve([]),
+    ]).then(([patients, visits, administrations, observations, interventions, strats]) =>
+      setDash(computeDashboard({ patients, visits, administrations, observations, interventions: interventions.length, strats, today: todayIso() })))
       .catch((e: Error) => setError(e.message));
   }, [session.role, clinical]);
 
@@ -82,7 +83,7 @@ export function HomePage() {
             <tr><th>LDL-c final (mg/dL)</th><td><StatCell s={dash.ldlFinalMgdl} /> <span className="text-muted">valores en mmol/L no se agregan aquí (sin conversión automática)</span></td></tr>
             <tr><th>Intervenciones registradas</th><td>{dash.interventions}</td></tr>
           </> : null}
-          <tr><th>Prioridades CMO</th><td>No disponibles: modelo CMO cardiovascular no validado.</td></tr>
+          <tr><th>Prioridades CMO vigentes</th><td>{dash.priorities ? `P1 ${dash.priorities[1]} · P2 ${dash.priorities[2]} · P3 ${dash.priorities[3]} · sin estratificar ${dash.priorities.none}` : '—'} <span className="text-muted">(de {dash.included} incluidos)</span></td></tr>
           <tr><th>EQ-5D-3L EVA basal / final</th><td><StatCell s={dash.eqVasBaseline} /> · <StatCell s={dash.eqVasFinal} /></td></tr>
           <tr><th>Morisky-Green: adherentes basal / final</th><td>{dash.moriskyBaseline.adherent} de {dash.moriskyBaseline.n} · {dash.moriskyFinal.adherent} de {dash.moriskyFinal.n} <span className="text-muted">(solo cuestionarios completos)</span></td></tr>
           <tr><th>EVASAF</th><td>Resultado por ítem en la exportación (sin total definido).</td></tr>

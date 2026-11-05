@@ -56,7 +56,7 @@ export function VisitPage() {
       {ROLE_CAN.readClinical(session.role) && visit.status !== 'cancelled' ? <ObservationsSection data={data} canWrite={canWrite} reload={load} /> : null}
       {ROLE_CAN.readClinical(session.role) ? <EvolutionSection data={data} canWrite={canWrite} reload={load} /> : null}
       <section className="card"><h2>Intervenciones y estratificación en esta visita</h2>
-        <p>Pendientes de la taxonomía oficial y del modelo CMO cardiovascular validados. Ver <Link to="/interventions">Intervenciones</Link> y <Link to="/stratification">Estratificación</Link>.</p></section>
+        <p>Estratificación del paciente: <Link to={`/patients/${patient.id}/stratification`}>abrir</Link>. Registro de actuaciones: <Link to="/interventions">Intervenciones</Link>. Ver también <Link to="/stratification">Estratificación</Link>.</p></section>
     </div>
   );
 }

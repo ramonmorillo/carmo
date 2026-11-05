@@ -9,7 +9,7 @@ import type { ColumnSpec, ColumnType, Dataset } from './spec';
 import type { TableRequest } from './reader';
 
 export const QUESTIONNAIRE_SCORING_VERSION = 'carmo-iexpac-1, carmo-eq5d3l-1 (perfil + EVA, sin índice), carmo-evasaf-1 (sin total), carmo-mg-1 (adherente = No-Sí-No-No) · carmo_private.questionnaire_scores';
-export const STRATIFICATION_SCORING_VERSION = `${CMO_ENGINE_VERSION} · modelo CMO cardiovascular NO validado: estratificación desactivada.`;
+export const STRATIFICATION_SCORING_VERSION = `${CMO_ENGINE_VERSION} + carmo_private.cmo_compute · modelo CMO-CV-SEFH-2024 (ver columna model_version)`;
 
 type Row = Record<string, unknown>;
 type RawCol = [name: string, type: ColumnType, label: string, values?: Record<string, string>];
@@ -82,8 +82,9 @@ const RAW_TABLES = {
   ] as RawCol[] },
   stratifications: { table: 'carmo_stratifications', title: 'Estratificaciones CMO', grain: 'estratificación', cols: [
     ['id', 'string', 'Id'], ['patient_id', 'string', 'Paciente (id)'], ['visit_id', 'string', 'Visita (id)'], ['model_version', 'string', 'Versión del modelo'],
-    ['engine_version', 'string', 'Versión del motor'], ['total_score', 'decimal', 'Puntuación'], ['calculated_priority', 'integer', 'Prioridad calculada'],
-    ['validation_status', 'string', 'Validación profesional'], ['final_priority', 'integer', 'Prioridad final'], ['calculated_at', 'datetime', 'Calculada'],
+    ['engine_version', 'string', 'Versión del motor'], ['inputs', 'json', 'Respuestas del modelo (original)'], ['item_results', 'json', 'Resultado de la BD (total, bloques, ítems)'],
+    ['total_score', 'decimal', 'Puntuación'], ['calculated_priority', 'integer', 'Prioridad calculada'],
+    ['validation_status', 'string', 'Validación profesional'], ['final_priority', 'integer', 'Prioridad final'], ['validation_reason', 'string', 'Motivo de la elevación'], ['calculated_at', 'datetime', 'Calculada'],
     ['supersedes_id', 'string', 'Reestratifica a (id)'],
   ] as RawCol[] },
   deviations: { table: 'carmo_deviations', title: 'Desviaciones e incidencias', grain: 'desviación', cols: [
@@ -193,6 +194,14 @@ export function buildDatasets(raw: RawData, todayIso: string): BuildResult {
     if (naiveObs && naiveDerived !== null && naiveObs.value_boolean !== naiveDerived) {
       issues.push({ tipo: 'naive_discordante', gravedad: 'revisar', tabla: 'carmo_observations', registro_id: pid, study_code: String(p.study_code), detalle: 'La variable «paciente naïve» no coincide con el registro de tratamientos (inicio del medicamento del estudio respecto a la inclusión).' });
     }
+    const stratsOf = raw.stratifications.filter((s) => s.patient_id === pid);
+    const currentStrat = (rows: Row[]) => rows.find((s) => !rows.some((n) => n.supersedes_id === s.id));
+    const sBasal = basal ? currentStrat(stratsOf.filter((s) => s.visit_id === basal.id)) : undefined;
+    const sNow = currentStrat(stratsOf);
+    const eff = (s: Row | undefined) => (s ? ((s.final_priority as number | null) ?? (s.calculated_priority as number)) : null);
+    row.cmo_puntos_basal = (sBasal?.total_score as number | undefined) ?? null;
+    row.cmo_prioridad_basal = eff(sBasal);
+    row.cmo_prioridad_vigente = eff(sNow);
     row.imc_basal = deriveBmi(obsAt(pid, basal?.id as string | undefined, 'weight'), obsAt(pid, basal?.id as string | undefined, 'height'));
     row.imc_final = deriveBmi(obsAt(pid, final?.id as string | undefined, 'weight'), obsAt(pid, final?.id as string | undefined, 'height'));
     longRows.push(row);
@@ -252,6 +261,9 @@ export function buildDatasets(raw: RawData, todayIso: string): BuildResult {
     c('mg_adherente_s24', 'boolean', 'Morisky-Green adherente (S24)', 'scores.adherent', { instrument: 'MORISKY_GREEN', visit: 'S24' }),
     c('mg_adherente_final', 'boolean', 'Morisky-Green adherente (final)', 'scores.adherent', { instrument: 'MORISKY_GREEN', visit: 'FINAL' }),
     c('naive_derivado', 'boolean', 'Nuevo a tratamiento según el registro de tratamientos', 'derivada', { rule: 'todos los medicamentos del estudio iniciados en o después de la inclusión; vacío sin tratamiento del estudio registrado' }),
+    c('cmo_puntos_basal', 'decimal', 'CMO: puntuación en la visita inicial (0-42)', 'carmo_stratifications.total_score', { visit: 'BASAL' }),
+    c('cmo_prioridad_basal', 'integer', 'CMO: prioridad en la visita inicial', 'derivada', { values: { '1': 'Prioridad 1', '2': 'Prioridad 2', '3': 'Prioridad 3' }, rule: 'final_priority si se validó con elevación; si no, calculated_priority; estratificación vigente de la visita inicial' }),
+    c('cmo_prioridad_vigente', 'integer', 'CMO: prioridad vigente (última estratificación)', 'derivada', { values: { '1': 'Prioridad 1', '2': 'Prioridad 2', '3': 'Prioridad 3' } }),
     c('imc_basal', 'decimal', 'IMC basal (kg/m²)', 'derivada', { rule: 'peso (kg) / (talla (cm)/100)²', unit: 'kg/m2' }),
     c('imc_final', 'decimal', 'IMC final (kg/m²)', 'derivada', { rule: 'peso (kg) / (talla (cm)/100)²', unit: 'kg/m2' }),
   );

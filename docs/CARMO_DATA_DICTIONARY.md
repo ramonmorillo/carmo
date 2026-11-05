@@ -82,7 +82,7 @@ Cada observación lleva: valor tipado, unidad, `observed_date`, `data_source`, `
 | `other_arterial_revascularization` | Revascularización de otras arterias | Sí/no + fecha | Ídem | Todas | IMPL |
 | `peripheral_artery_disease` | Enfermedad arterial periférica | Sí/no + fecha | Ídem | Todas | IMPL |
 | `naive_patient` | Paciente naïve = **nuevo a tratamiento** (variable exploratoria; «Diseño», p. 8; definición del IP) | Sí/no | — | BASAL | IMPL; contraste con tratamientos (`naive_derivado`) |
-| — | Variables del modelo CMO (tablas 1-4: demográficas, clínicas, farmacoterapéuticas, sociosanitarias) | — | — | BASAL (+ reestratificación) | **NO-IMPL**: pendiente del documento CMO (RG-21) |
+| — | Variables del modelo CMO (tablas 1-4) | — | — | Inicial (+ reestratificación) | IMPL en `carmo_stratifications.inputs` (docs/CARMO_CMO_MODEL.md) |
 
 ## 4. Tratamiento farmacológico
 
@@ -108,7 +108,7 @@ Metadatos (EXT-TÉC): estado, motivo de no realización, modalidad, soporte, fec
 
 ## 6. CMO e intervenciones
 
-**BLOQ** hasta recibir el documento «Adaptación del Modelo de AF CMO al paciente con patología cardiovascular» (apartados II-V del módulo de capacidad: tablas 1-4 de estratificación y tablas 5-7 de actuaciones por prioridad; módulos de motivación y oportunidad).
+IMPL: ver **docs/CARMO_CMO_MODEL.md** (20 variables del modelo, 23 ítems puntuables, umbrales y excepciones, catálogo de 29 actuaciones). Modelo en borrador hasta la confirmación del IP.
 
 Intervenciones previstas por el protocolo: número y tipo; programadas o no programadas; presencial o no presencial (telefónica); taxonomía del modelo.
 

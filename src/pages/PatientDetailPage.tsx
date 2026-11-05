@@ -8,6 +8,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { SaveStatus } from '../components/ui/SaveStatus';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { pairIexpac } from '../domain/iexpac';
+import { effectivePriority, PRIORITY_LABELS, VALIDATION_LABELS } from '../domain/cmoLabels';
 import { WINDOW_STATUS_LABELS, isOverdue, type WindowStatus } from '../domain/schedule';
 import {
   INCLUSION_BLOCKER_LABELS, MODALITY_LABELS, PATIENT_STATUS_LABELS, PROGRAMMED_VISITS, RECORD_STATE_LABELS, ROLE_CAN,
@@ -18,14 +19,14 @@ import { useCarmoSession, type CarmoSession } from '../lib/session';
 import { useSave } from '../lib/useSave';
 import {
   carmo, carmoWrite, type Administration, type Consent, type Deviation, type Dispensation, type EligibilityAnswer, type EligibilityCriterion,
-  type Patient, type Profile, type Treatment, type TreatmentEvent, type Visit, type VisitWindow,
+  type Patient, type Profile, type Stratification, type Treatment, type TreatmentEvent, type Visit, type VisitWindow,
 } from '../services/carmoData';
 import { TreatmentPanel } from './TreatmentPanel';
 
 type Data = {
   patient: Patient; visits: Visit[]; windows: VisitWindow[]; criteria: EligibilityCriterion[]; answers: EligibilityAnswer[]; consents: Consent[];
   blockers: string[]; administrations: Administration[]; deviations: Deviation[]; profiles: Profile[];
-  treatments: Treatment[]; events: TreatmentEvent[]; dispensations: Dispensation[];
+  treatments: Treatment[]; events: TreatmentEvent[]; dispensations: Dispensation[]; currentStrat: Stratification | null;
 };
 
 export function PatientDetailPage() {
@@ -39,14 +40,16 @@ export function PatientDetailPage() {
       const patient = await carmo.patient(id);
       if (!patient) { setError('Paciente no encontrado o fuera de su ámbito.'); return; }
       const clinical = ROLE_CAN.readClinical(session.role);
-      const [visits, windows, criteria, answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations] = await Promise.all([
+      const [visits, windows, criteria, answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations, strats] = await Promise.all([
         carmo.visits(id), carmo.windows(), carmo.criteria(), clinical ? carmo.answers(id) : [], clinical ? carmo.consents(id) : [],
         patient.status === 'screening' ? carmo.inclusionBlockers(id) : Promise.resolve([] as string[]),
         carmo.administrations(id), clinical ? carmo.deviations(id) : [], carmo.profiles(),
         clinical ? carmo.treatments(id) : [], clinical ? carmo.treatmentEvents(id) : [], clinical ? carmo.dispensations(id) : [],
+        clinical ? carmo.stratifications(id) : [],
       ]);
       setData({ patient, visits, windows, criteria: criteria.filter((c) => c.set_id === patient.eligibility_set_id).sort((a, b) => a.ordinal - b.ordinal),
-        answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations });
+        answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations,
+        currentStrat: strats.find((s) => !strats.some((n) => n.supersedes_id === s.id)) ?? null });
     } catch (e) { setError((e as Error).message); }
   }, [id, session.role]);
   useEffect(() => { void load(); }, [load]);
@@ -67,7 +70,8 @@ export function PatientDetailPage() {
           {patient.is_synthetic ? <StatusBadge tone="warning">Dato sintético</StatusBadge> : null}</>} />
       <section className="carmo-kpis" aria-label="Resumen del paciente">
         <div className="carmo-kpi"><span>Estado</span><strong style={{ fontSize: '1rem' }}>{label(PATIENT_STATUS_LABELS, patient.status)}</strong></div>
-        <div className="carmo-kpi"><span>Prioridad CMO</span><strong style={{ fontSize: '1rem' }}>No disponible</strong><small>Modelo cardiovascular no validado</small></div>
+        <div className="carmo-kpi"><span>Prioridad CMO</span><strong style={{ fontSize: '1rem' }}>{data.currentStrat ? PRIORITY_LABELS[effectivePriority(data.currentStrat)] : 'Sin estratificar'}</strong>
+          <small>{data.currentStrat ? `${data.currentStrat.total_score} puntos · ${VALIDATION_LABELS[data.currentStrat.validation_status]}` : ''}{ROLE_CAN.readClinical(session.role) && patient.status !== 'screening' && patient.status !== 'not_included' ? <> · <Link to={`/patients/${patient.id}/stratification`}>Estratificación</Link></> : null}</small></div>
         <div className="carmo-kpi"><span>IEXPAC basal → final</span><strong style={{ fontSize: '1rem' }}>{fmtNum(paired.baseline)} → {fmtNum(paired.final)}</strong><small>{paired.paired ? `Diferencia ${fmtNum(paired.difference)}` : 'Sin par completo'}</small></div>
         <div className="carmo-kpi"><span>Visitas previstas vencidas</span><strong>{pendingVisits}</strong></div>
       </section>

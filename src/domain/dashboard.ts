@@ -18,7 +18,9 @@ export function describe(values: number[]): Stat {
 
 const INCLUDED = new Set(['included', 'withdrawn', 'lost_to_followup', 'completed']);
 
-export function computeDashboard(input: { patients: P[]; visits: V[]; administrations: A[]; observations: O[]; interventions: number; today: string }) {
+type S = { id: string; patient_id: string; supersedes_id: string | null; final_priority: number | null; calculated_priority: number };
+
+export function computeDashboard(input: { patients: P[]; visits: V[]; administrations: A[]; observations: O[]; interventions: number; strats?: S[]; today: string }) {
   const included = input.patients.filter((p) => INCLUDED.has(p.status));
   const byCenter = new Map<string, number>();
   for (const p of included) byCenter.set(p.center_id, (byCenter.get(p.center_id) ?? 0) + 1);
@@ -61,6 +63,15 @@ export function computeDashboard(input: { patients: P[]; visits: V[]; administra
     ldlBaselineMgdl: describe(ldlAt('BASAL', 'mg/dL')),
     ldlFinalMgdl: describe(ldlAt('FINAL', 'mg/dL')),
     interventions: input.interventions,
+    priorities: input.strats ? (() => {
+      const cur = input.strats.filter((s) => !input.strats!.some((n) => n.supersedes_id === s.id));
+      const res = { 1: 0, 2: 0, 3: 0, none: 0 } as Record<1 | 2 | 3 | 'none', number>;
+      for (const p of included) {
+        const s = cur.find((x) => x.patient_id === p.id);
+        if (!s) res.none += 1; else res[(s.final_priority ?? s.calculated_priority) as 1 | 2 | 3] += 1;
+      }
+      return res;
+    })() : null,
     moriskyBaseline: adherence('BASAL'),
     moriskyFinal: adherence('FINAL'),
     eqVasBaseline: describe(vasAt('BASAL')),

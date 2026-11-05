@@ -1,0 +1,359 @@
+[
+ {
+  "code": "SFT01",
+  "cmo_domain": "capacity",
+  "category": "Seguimiento farmacoterapéutico",
+  "subcategory": null,
+  "label": "Revisar y validar el tratamiento cardiovascular (adecuación, seguridad, efectividad según guías); registrar y comunicar RAM",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "SFT02",
+  "cmo_domain": "capacity",
+  "category": "Seguimiento farmacoterapéutico",
+  "subcategory": null,
+  "label": "Monitorizar la adherencia y aplicar estrategias de mejora (educación, apoyo conductual, cuidado colaborativo, gestión de casos)",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "SFT03",
+  "cmo_domain": "capacity",
+  "category": "Seguimiento farmacoterapéutico",
+  "subcategory": null,
+  "label": "Contacto adicional entre visitas mediante teleasistencia y planificación de la próxima visita con el equipo asistencial",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "SFT04",
+  "cmo_domain": "capacity",
+  "category": "Seguimiento farmacoterapéutico",
+  "subcategory": null,
+  "label": "Conciliar y revisar la medicación concomitante (interacciones; alternativas terapéuticas)",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "SFT05",
+  "cmo_domain": "capacity",
+  "category": "Seguimiento farmacoterapéutico",
+  "subcategory": null,
+  "label": "Monitorizar y decidir de forma multidisciplinar según los PROMs y PREMs",
+  "priority_levels": [
+   1,
+   2
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "SFT06",
+  "cmo_domain": "capacity",
+  "category": "Seguimiento farmacoterapéutico",
+  "subcategory": null,
+  "label": "Conciliación del tratamiento en las transiciones asistenciales (ingreso, alta, urgencias)",
+  "priority_levels": [
+   1,
+   2
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "SFT07",
+  "cmo_domain": "capacity",
+  "category": "Seguimiento farmacoterapéutico",
+  "subcategory": null,
+  "label": "Involucrar al paciente en el Plan Farmacoterapéutico: compartir la evolución de objetivos y acordar acciones",
+  "priority_levels": [
+   1
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "SFT08",
+  "cmo_domain": "capacity",
+  "category": "Seguimiento farmacoterapéutico",
+  "subcategory": null,
+  "label": "Programas estructurados de detección, prevención o control de factores de riesgo (HTA, dislipemia, diabetes) con telemedicina",
+  "priority_levels": [
+   1
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "EDU01",
+  "cmo_domain": "capacity",
+  "category": "Educación, formación y seguimiento del paciente",
+  "subcategory": null,
+  "label": "Fomentar un paciente activo e informado, corresponsable del resultado del tratamiento",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "EDU02",
+  "cmo_domain": "capacity",
+  "category": "Educación, formación y seguimiento del paciente",
+  "subcategory": null,
+  "label": "Proporcionar información (tratamientos, patología CV, cumplimiento) y resolver dudas",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "EDU03",
+  "cmo_domain": "capacity",
+  "category": "Educación, formación y seguimiento del paciente",
+  "subcategory": null,
+  "label": "Educación sanitaria general (hábitos cardiosaludables, factores de riesgo, uso correcto de medicamentos, adherencia)",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "EDU04",
+  "cmo_domain": "capacity",
+  "category": "Educación, formación y seguimiento del paciente",
+  "subcategory": null,
+  "label": "Promover herramientas de autogestión (recursos web, apps) y confirmar cambios de hábitos",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "EDU05",
+  "cmo_domain": "capacity",
+  "category": "Educación, formación y seguimiento del paciente",
+  "subcategory": null,
+  "label": "Educación sobre prevención y adherencia: riesgo CV asociado a la falta de adherencia",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "EDU06",
+  "cmo_domain": "capacity",
+  "category": "Educación, formación y seguimiento del paciente",
+  "subcategory": null,
+  "label": "Formación y educación a familiares y cuidadores",
+  "priority_levels": [
+   1,
+   2
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "EDU07",
+  "cmo_domain": "capacity",
+  "category": "Educación, formación y seguimiento del paciente",
+  "subcategory": null,
+  "label": "Material personalizado para paciente y/o cuidador (hoja de medicación, diario, etc.)",
+  "priority_levels": [
+   1
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO01",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Integrar la información e intervenciones en la historia clínica electrónica",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO02",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Colaborar en políticas y directrices de uso seguro y efectivo de medicamentos (guías de FRCV)",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO03",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Unificar criterios y mensajes entre profesionales y niveles asistenciales",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO04",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Desarrollar programas orientados a cumplir objetivos farmacoterapéuticos",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO05",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Colaborar en el informe de alta con información de atención farmacéutica",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO06",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Ante desigualdades sociales que afectan a la salud, coordinarse con otras especialidades",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO07",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Procedimientos de trabajo conjuntos para potenciar la autonomía del paciente",
+  "priority_levels": [
+   1,
+   2
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO08",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Coordinación con asociaciones de pacientes",
+  "priority_levels": [
+   1
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO09",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Coordinar servicios intrahospitalarios y recomendar SPD con la farmacia comunitaria",
+  "priority_levels": [
+   1
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO10",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Informes periódicos al equipo multidisciplinar sobre pacientes prioritarios",
+  "priority_levels": [
+   1
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO11",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Participar en equipos de gestión de casos",
+  "priority_levels": [
+   1
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "COO12",
+  "cmo_domain": "capacity",
+  "category": "Coordinación con el equipo asistencial",
+  "subcategory": null,
+  "label": "Plan de acción entre niveles asistenciales para reacciones adversas (vías rápidas de comunicación)",
+  "priority_levels": [
+   1
+  ],
+  "source_reference": "Modelo CMO cardiovascular (MAPEX-SEFH), apartado V, Tablas 5-7"
+ },
+ {
+  "code": "MOT01",
+  "cmo_domain": "motivation",
+  "category": "Entrevista motivacional",
+  "subcategory": null,
+  "label": "Entrevista motivacional (módulo Motivación del modelo)",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Protocolo CARMO v3.0 (Procedimiento) y módulo Motivación del modelo CMO cardiovascular"
+ },
+ {
+  "code": "OPO01",
+  "cmo_domain": "opportunity",
+  "category": "Seguimiento a distancia",
+  "subcategory": null,
+  "label": "Teleconsulta / seguimiento farmacoterapéutico a distancia (módulo Oportunidad, telefarmacia)",
+  "priority_levels": [
+   1,
+   2,
+   3
+  ],
+  "source_reference": "Protocolo CARMO v3.0 (Procedimiento, teleconsultas) y módulo Oportunidad del modelo CMO cardiovascular"
+ }
+]

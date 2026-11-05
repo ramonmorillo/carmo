@@ -44,3 +44,18 @@ describe('panel científico (descriptivo, con denominadores)', () => {
     expect(stat([1, 3, 2, 10])).toEqual({ n: 4, mean: 4, median: 2.5 });
   });
 });
+
+describe('panel: prioridades CMO vigentes', () => {
+  it('cuenta la estratificación vigente (no sustituida) y la prioridad elevada', () => {
+    const d = computeDashboard({
+      patients: [{ id: 'a', center_id: 'c', status: 'included', inclusion_date: '2026-01-01' }, { id: 'b', center_id: 'c', status: 'included', inclusion_date: '2026-01-01' }, { id: 'c', center_id: 'c', status: 'included', inclusion_date: '2026-01-01' }],
+      visits: [], administrations: [], observations: [], interventions: 0, today: '2026-11-05',
+      strats: [
+        { id: 's1', patient_id: 'a', supersedes_id: null, final_priority: null, calculated_priority: 3 },
+        { id: 's2', patient_id: 'a', supersedes_id: 's1', final_priority: 1, calculated_priority: 2 },
+        { id: 's3', patient_id: 'b', supersedes_id: null, final_priority: null, calculated_priority: 2 },
+      ],
+    });
+    expect(d.priorities).toEqual({ 1: 1, 2: 1, 3: 0, none: 1 });
+  });
+});

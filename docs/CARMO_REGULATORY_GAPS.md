@@ -54,8 +54,8 @@ Los documentos originales no se versionan en el repositorio porque es público y
 | RG-17 | EVASAF | **Habilitada** (reutilizada de COAMO): 10 ítems de 1 a 5. Ni el protocolo ni el documento definen un total; CARMO no lo calcula. Hay que decidir la **variable resumen** para la comparación basal-final (ítem a ítem, ítem 10 de satisfacción global o media de ítems), o se analizará por ítems. DERMAPEX calcula media y suma; COAMO no: no son homogéneos |
 | RG-40 | Morisky-Green «(%)» en las visitas inicial, S24 y final | **Habilitado** (reutilizado de DERMAPEX): 4 ítems sí/no; adherente = No-Sí-No-No (versión española con P2 «¿toma la medicación a las horas indicadas?»). En DERMAPEX figura como «pendiente de validar». Pendiente: confirmar que el formulario en papel usa esa redacción y ese orden, y la **licencia** de uso |
 | RG-20 | Adherencia por dispensaciones | Método, ventana y umbral no especificados. Se registran las dispensaciones; no se calcula nada |
-| RG-21 | Modelo CMO cardiovascular (tablas 1-7 del documento de adaptación) | **Pendiente de recibir.** Cálculo desactivado |
-| RG-22 | Taxonomía de intervenciones (3 ámbitos: seguimiento farmacoterapéutico, formación y educación, coordinación con el equipo; tablas 5-7) | Pendiente del documento CMO |
+| RG-21 | Modelo CMO cardiovascular | **Recibido (05/11/2026) e implementado** como `CMO-CV-SEFH-2024` (migración 07), cargado como **borrador** hasta que el IP confirme 8 decisiones de interpretación (docs/CARMO_CMO_MODEL.md §4). Los casos clínicos 4 y 5 se reproducen exactamente; los casos 1 y 2 del documento contradicen sus propias tablas |
+| RG-22 | Taxonomía de intervenciones | **Implementada**: Tablas 5-7 (27 actuaciones acumulativas por prioridad) + entrevista motivacional y seguimiento a distancia (2, procedentes del protocolo y de los módulos del modelo). Registro de intervenciones habilitado |
 | RG-15 | Problemas relacionados con medicamentos | No los define el protocolo |
 
 ## D. Protección de datos

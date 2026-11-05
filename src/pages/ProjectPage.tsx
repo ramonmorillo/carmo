@@ -30,7 +30,7 @@ export function ProjectPage() {
       <section className="card"><h2>Limitaciones y uso profesional</h2>
         <ul>
           <li>Herramienta de investigación en fase de validación; no es un producto sanitario ni sustituye el juicio clínico.</li>
-          <li>Estratificación CMO cardiovascular desactivada hasta disponer del modelo oficial validado.</li>
+          <li>Estratificación con el modelo CMO cardiovascular de MAPEX-SEFH (CMO-CV-SEFH-2024): sujeta a validación profesional en cada paciente; el guardado se activa cuando la coordinación valida el modelo.</li>
           <li>EQ-5D, EVASAF y Morisky-Green pendientes de versión, licencia y reglas de puntuación.</li>
           <li>Los indicadores del panel son descriptivos y no constituyen el análisis estadístico final.</li>
         </ul>

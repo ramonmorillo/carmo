@@ -47,10 +47,19 @@ export type TreatmentEvent = { id: string; treatment_id: string; event_type: str
 export type Dispensation = { id: string; treatment_id: string; dispensed_date: string; units_dispensed: number; days_supply: number | null; supersedes_id: string | null };
 export type Evolution = { visit_id: string; clinical_evolution: string | null; pharmacotherapy_update: string | null; motivational_followup: string | null; drp_identified: boolean | null; drp_description: string | null; revision: number };
 export type Deviation = { id: string; patient_id: string; visit_id: string | null; category: string; description: string; detected_date: string; status: string };
-export type CmoModel = { version: string; status: string; source_reference: string };
-export type Stratification = { id: string; patient_id: string; visit_id: string; model_version: string; total_score: number | null; calculated_priority: number; final_priority: number | null; validation_status: string; calculated_at: string };
-export type InterventionCatalogItem = { code: string; cmo_domain: string; category: string; subcategory: string | null; label: string; status: string };
-export type Intervention = { id: string; patient_id: string; visit_id: string | null; catalog_code: string; intervention_date: string; is_scheduled: boolean; modality: string; acceptance: string | null; followup_status: string };
+export type CmoModel = { version: string; status: string; source_reference: string; definition: import('../domain/cmoEngine').CmoModelDefinition; validated_by: string | null; validated_at: string | null };
+export type Stratification = {
+  id: string; patient_id: string; visit_id: string; model_version: string; engine_version: string; inputs: Record<string, string>;
+  item_results: { total: number; blocks: Record<string, number>; priority: number; score_priority: number; applied_exceptions: string[] } | null;
+  total_score: number | null; calculated_priority: 1 | 2 | 3; final_priority: 1 | 2 | 3 | null; validation_status: string; validation_reason: string | null;
+  justification: string; calculated_at: string; calculated_by: string | null; validated_at: string | null; supersedes_id: string | null;
+};
+export type InterventionCatalogItem = { code: string; cmo_domain: string; category: string; subcategory: string | null; label: string; status: string; priority_levels: number[] };
+export type Intervention = {
+  id: string; patient_id: string; visit_id: string | null; catalog_code: string; intervention_date: string; is_scheduled: boolean; modality: string;
+  reason: string | null; action_taken: string | null; recipient: string | null; acceptance: string | null; outcome: string | null; followup_status: string;
+  stratification_id: string | null; revision: number;
+};
 
 function client() {
   if (!supabase) throw new Error('Supabase no está configurado.');
@@ -112,9 +121,9 @@ export const carmo = {
   },
   deviations: (patientId: string) => list<Deviation>('carmo_deviations', (q) => q.eq('patient_id', patientId)),
   cmoModels: () => list<CmoModel>('carmo_cmo_models'),
-  stratifications: () => list<Stratification>('carmo_stratifications'),
+  stratifications: (patientId?: string) => list<Stratification>('carmo_stratifications', (q) => (patientId ? q.eq('patient_id', patientId) : q).order('calculated_at', { ascending: false })),
   interventionCatalog: () => list<InterventionCatalogItem>('carmo_intervention_catalog'),
-  interventions: () => list<Intervention>('carmo_interventions'),
+  interventions: (patientId?: string) => list<Intervention>('carmo_interventions', (q) => (patientId ? q.eq('patient_id', patientId) : q).order('intervention_date', { ascending: false })),
   async inclusionBlockers(patientId: string): Promise<string[]> {
     const { data, error } = await client().rpc('carmo_inclusion_blockers', { p_patient_id: patientId });
     if (error) throw new Error(error.message);

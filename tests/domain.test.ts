@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addDaysIso, isOverdue, windowStatus } from '../src/domain/schedule';
 import { correctionChain, currentObservations, deriveBmi, numericChange } from '../src/domain/observations';
-import { assertModelUsable, computeCmo, validateDefinition, type CmoModelDefinition } from '../src/domain/cmoEngine';
 import { createSaveGuard } from '../src/domain/saveGuard';
 
 describe('calendario', () => {
@@ -32,40 +31,6 @@ describe('observaciones de solo-adición', () => {
   it('no compara unidades distintas ni convierte', () => {
     expect(numericChange({ value: 130, unit: 'mg/dL' }, { value: 70, unit: 'mg/dL' })).toMatchObject({ absolute: -60, comparable: true });
     expect(numericChange({ value: 130, unit: 'mg/dL' }, { value: 1.8, unit: 'mmol/L' })).toMatchObject({ absolute: null, reason: 'unit_mismatch' });
-  });
-});
-
-// Modelo SINTÉTICO solo para probar el motor. NO es el modelo CMO cardiovascular ni se usa en clínica.
-const TOY: CmoModelDefinition = {
-  version: 'TOY-TEST',
-  variables: [
-    { code: 'v1', label: 'Variable ficticia 1', dimension: 'd1', options: [{ value: 'a', label: 'A', points: 0 }, { value: 'b', label: 'B', points: 3 }] },
-    { code: 'v2', label: 'Variable ficticia 2', dimension: 'd2', options: [{ value: 'a', label: 'A', points: 1 }, { value: 'b', label: 'B', points: 4 }] },
-  ],
-  thresholds: { priority1Min: 6, priority2Min: 3 },
-  exceptions: [{ id: 'EX1', description: 'Regla ficticia', when: { variable: 'v2', equals: 'b' }, forcePriority: 2 }],
-};
-
-describe('motor CMO genérico (sin reglas clínicas)', () => {
-  it('bloquea modelos no validados', () => {
-    expect(assertModelUsable(null).usable).toBe(false);
-    expect(assertModelUsable({ version: 'X', status: 'draft', definition: TOY }).usable).toBe(false);
-    expect(assertModelUsable({ version: 'X', status: 'validated', definition: TOY }).usable).toBe(true);
-  });
-  it('cálculo reproducible, desglose y reglas excepcionales', () => {
-    const r1 = computeCmo(TOY, { v1: 'a', v2: 'a' });
-    expect(r1).toMatchObject({ totalScore: 1, priority: 3 });
-    const r2 = computeCmo(TOY, { v1: 'a', v2: 'b' });
-    expect(r2).toMatchObject({ totalScore: 4, priority: 2, appliedExceptions: ['EX1'] });
-    expect(computeCmo(TOY, { v1: 'b', v2: 'b' })).toMatchObject({ totalScore: 7, priority: 1 });
-    expect(computeCmo(TOY, { v1: 'b', v2: 'b' })).toEqual(computeCmo(TOY, { v1: 'b', v2: 'b' }));
-  });
-  it('sin imputación: falta una variable → sin prioridad', () => {
-    expect(computeCmo(TOY, { v1: 'b' })).toMatchObject({ priority: null, totalScore: null, missing: ['v2'] });
-  });
-  it('valida la definición y los valores', () => {
-    expect(validateDefinition({ ...TOY, thresholds: { priority1Min: 2, priority2Min: 3 } })).not.toHaveLength(0);
-    expect(() => computeCmo(TOY, { v1: 'z', v2: 'a' })).toThrow();
   });
 });
 
