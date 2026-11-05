@@ -54,3 +54,19 @@
   .carmo-item { grid-template-columns: 1fr; }
   .carmo-dl { grid-template-columns: 1fr; }
 }
+
+/* Portada pública: niveles de prioridad CMO (misma composición que COAMO, paleta CARMO) */
+.carmo-priority-list { margin: var(--sp-6) 0 0; display: grid; gap: 0; }
+.carmo-priority-list div { padding: var(--sp-3) 0; display: grid; grid-template-columns: 7.5rem 1fr auto; gap: var(--sp-3); align-items: baseline; border-top: 1px solid rgba(255, 255, 255, .17); font-size: var(--fs-sm); }
+.carmo-priority-list dt { color: #fff; font-weight: 650; }
+.carmo-priority-list dd { margin: 0; color: #bdd1d7; }
+.carmo-priority-list dd:last-child { color: #fff; text-align: right; }
+.cmo-grid p + p { margin-top: var(--sp-4); }
+.carmo-validation-notice { margin-top: var(--sp-5); }
+@media (max-width: 640px) {
+  .carmo-priority-list div { grid-template-columns: 1fr; gap: var(--sp-1); }
+  .carmo-priority-list dd:last-child { text-align: left; }
+}
+.timeline-point-5 { animation-delay: .48s; }
+.hero-actions .button-secondary { background: transparent; }
+.hero-actions .button-secondary:hover { background: rgba(255, 255, 255, .08); }
