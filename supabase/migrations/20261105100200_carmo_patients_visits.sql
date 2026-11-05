@@ -4,7 +4,10 @@
 -- Reglas aplicadas en la base de datos (no solo en la interfaz):
 --   · Sin identificadores directos: no existen columnas para nombre, NHC, DNI, teléfono, correo,
 --     dirección ni fecha de nacimiento. El registro de selección identificativo queda en el centro.
---   · Código CARMO-<NN>-<NNNN> asignado por la BD (NN = número del centro). Inmutable.
+--   · Dos códigos asignados por la BD e inmutables (protocolo v3.0, «Inclusión y asignación del
+--     código de paciente»): código de SELECCIÓN SEL-<CCC>-<NNN> al registrar al candidato, y código
+--     de PACIENTE <CCC>-<PP> (3 cifras de centro + 2 cifras consecutivas en orden de INCLUSIÓN) solo al
+--     incluirlo. Los no incluidos no consumen código de paciente.
 --   · Inclusión imposible sin: conjunto de criterios ACTIVO (transcrito del protocolo y validado),
 --     todos los criterios respondidos en el sentido exigido, consentimiento firmado con versión,
 --     fecha e investigador responsable. Mientras no haya criterios activos, nadie puede incluirse.
@@ -18,8 +21,10 @@
 create table public.carmo_patients (
   id uuid primary key default gen_random_uuid(),
   center_id uuid not null references public.carmo_centers(id) on delete restrict,
-  center_seq integer not null,
-  study_code text not null unique,
+  screening_seq integer not null,
+  screening_code text not null unique,
+  inclusion_seq integer,
+  study_code text unique,
   eligibility_set_id uuid,
   status text not null default 'screening'
     check (status in ('screening', 'included', 'not_included', 'withdrawn', 'lost_to_followup', 'completed')),
@@ -34,17 +39,20 @@ create table public.carmo_patients (
   created_by uuid references public.carmo_profiles(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
-  unique (center_id, center_seq)
+  unique (center_id, screening_seq),
+  unique (center_id, inclusion_seq),
+  constraint carmo_patients_code_on_inclusion check ((study_code is null) = (inclusion_seq is null))
 );
 comment on table public.carmo_patients is
   'Sujeto CARMO seudonimizado (datos personales seudonimizados: siguen siendo datos personales). Sin identificadores directos. is_synthetic lo fija la BD según el modo del estudio.';
 comment on column public.carmo_patients.status_reason is
-  'Vocabulario TÉCNICO PROVISIONAL (el protocolo disponible no se ha transcrito): validar con coordinación (CARMO_REGULATORY_GAPS RG-12).';
+  'Vocabulario TÉCNICO PROVISIONAL (no definido en el protocolo v3.0): validar con coordinación (CARMO_REGULATORY_GAPS RG-12).';
 create index idx_carmo_patients_center on public.carmo_patients(center_id);
 
 create table carmo_private.patient_code_counters (
   center_id uuid primary key references public.carmo_centers(id) on delete restrict,
-  last_seq integer not null default 0
+  last_screening_seq integer not null default 0,
+  last_inclusion_seq integer not null default 0
 );
 alter table carmo_private.patient_code_counters enable row level security;
 revoke all on carmo_private.patient_code_counters from public, anon, authenticated;
@@ -99,6 +107,7 @@ create table public.carmo_consents (
   status text not null default 'signed' check (status in ('signed', 'withdrawn')),
   withdrawal_date date,
   withdrawal_scope text check (withdrawal_scope is null or withdrawal_scope in ('stop_followup_keep_data', 'stop_followup_data_pending_decision')),
+  future_use_choice text check (future_use_choice in ('delete', 'keep_pseudonymized')),
   correction_reason text,
   recorded_by uuid references public.carmo_profiles(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
@@ -108,7 +117,7 @@ create table public.carmo_consents (
   constraint carmo_consent_withdrawal_after check (withdrawal_date is null or withdrawal_date >= signed_date)
 );
 comment on table public.carmo_consents is
-  'Constancia del consentimiento firmado (el documento físico se custodia en el centro; aquí no se almacena). withdrawal_scope: política de uso de datos tras la retirada PENDIENTE de definir con promotor/CEIm (RG-10).';
+  'Constancia del consentimiento firmado (el documento físico se custodia en el centro; aquí no se almacena). future_use_choice: elección del participante en la HIP/CI v3.0 sobre sus datos al terminar el estudio (eliminados / conservados seudonimizados para usos futuros). withdrawal_scope: política tras la retirada PENDIENTE (RG-10).';
 
 -- ── Calendario de visitas versionado ────────────────────────────────────────
 
@@ -135,24 +144,46 @@ create table public.carmo_schedule_visits (
 );
 comment on column public.carmo_schedule_visits.window_before_days is 'NULL = ventana no definida en la fuente: la visita se señala «ventana pendiente», nunca «fuera de ventana».';
 
--- Calendario provisional derivado de la descripción del protocolo recibida en el encargo
--- (protocolo v3.0 no transcrito aún): ver CARMO_REGULATORY_GAPS RG-04 y RG-05.
+-- Calendario provisional transcrito del protocolo v3.0 («Visitas del estudio» y «Esquema de
+-- procedimientos»): visita inicial = día de la inclusión (columna S 1-4); monitorización programada
+-- S12, S24 y S36; visita fin de estudio a los 12 meses de la inclusión ±28 días. La tabla del
+-- protocolo sitúa la visita final en S48 (día 336, fuera de 12 meses ±28 = días 337-393): se adopta
+-- el texto (12 meses ±28 días, también en la HIP/CI) y queda pendiente de confirmar (RG-05).
+-- La periodicidad del seguimiento según prioridad CMO depende del documento del modelo (RG-21).
 with s as (
   insert into public.carmo_schedule_versions (version, status, source_reference)
-  values ('CARMO-CAL-0.1', 'provisional',
-          'Encargo de desarrollo 05/11/2026 (resumen del protocolo v3.0): evaluación inicial semanas 1-4; semanas 12, 24, 36, 48; visita final 12 meses ±28 días. Pendiente de verificar contra el protocolo.')
+  values ('CARMO-CAL-0.2', 'provisional',
+          'Protocolo v3.0 (12/09/2025): Visitas del estudio; Esquema de procedimientos. Versión aprobada por el CEIm-G: v2.0 (no disponible).')
   returning id
 )
 insert into public.carmo_schedule_visits (schedule_id, visit_code, ordinal, label, target_day, window_before_days, window_after_days, notes)
 select s.id, v.code, v.ord, v.label, v.day, v.before, v.after, v.notes
   from s, (values
-    ('BASAL', 1, 'Evaluación inicial (semanas 1-4)', 0, 0, 27, 'Interpretación provisional: semanas 1-4 desde la inclusión = días 0-27.'),
-    ('S12', 2, 'Semana 12', 84, null::integer, null::integer, 'Ventana no especificada.'),
-    ('S24', 3, 'Semana 24', 168, null, null, 'Ventana no especificada.'),
-    ('S36', 4, 'Semana 36', 252, null, null, 'Ventana no especificada.'),
-    ('S48', 5, 'Semana 48', 336, null, null, 'Ventana no especificada. Relación con la visita final a 12 meses pendiente (RG-05).'),
-    ('FINAL', 6, 'Visita final (12 meses ±28 días)', 365, 28, 28, '12 meses aproximados como 365 días (RG-05).')
+    ('BASAL', 1, 'Visita inicial (día de la inclusión; S 1-4)', 0, 0, 27, 'Protocolo: «corresponde al día de inclusión». Ventana días 0-27 = interpretación de la columna S 1-4.'),
+    ('S12', 2, 'Semana 12 (V1)', 84, null::integer, null::integer, 'Monitorización programada; ventana no especificada.'),
+    ('S24', 3, 'Semana 24 (V2) · valoración de adherencia', 168, null, null, 'Ventana no especificada. Esquema: valoración de la adherencia.'),
+    ('S36', 4, 'Semana 36 (V3)', 252, null, null, 'Ventana no especificada.'),
+    ('FINAL', 5, 'Visita fin de estudio (12 meses ±28 días)', 365, 28, 28, '12 meses ≈ 365 días desde la inclusión. Ver RG-05 (S48 en la tabla del protocolo).')
   ) as v(code, ord, label, day, before, after, notes);
+
+-- Criterios de selección transcritos (paráfrasis) del protocolo v3.0, «Criterios de inclusión /
+-- exclusión» y «Verificación de criterios». BORRADOR: la coordinación debe confirmar que coinciden con
+-- la versión aprobada (v2.0) y activarlo (validated_by/validated_at + status = 'active'). Sin
+-- conjunto activo no se puede incluir a nadie.
+with s as (
+  insert into public.carmo_eligibility_sets (version, status, source_reference)
+  values ('CARMO-SEL-P3.0', 'draft', 'Protocolo v3.0 (12/09/2025), apartados «Criterios de inclusión» y «Criterios de exclusión» (índice p. 9) y «Verificación de criterios» (índice p. 17)')
+  returning id
+)
+insert into public.carmo_eligibility_criteria (set_id, code, kind, ordinal, criterion_text, source_reference)
+select s.id, c.code, c.kind, c.ord, c.txt, c.src from s, (values
+  ('INC01', 'inclusion', 1, 'Mayor de 18 años con diagnóstico de hipercolesterolemia familiar y/o en prevención secundaria de enfermedad cardiovascular', 'Protocolo v3.0, criterio de inclusión 1'),
+  ('INC02', 'inclusion', 2, 'En seguimiento en consulta externa de Farmacia Hospitalaria con medicamentos de uso hospitalario para esta patología', 'Protocolo v3.0, criterio de inclusión 2'),
+  ('INC03', 'inclusion', 3, 'Ha otorgado el consentimiento informado de participación por escrito', 'Protocolo v3.0, criterio de inclusión 3'),
+  ('INC04', 'inclusion', 4, 'Ausencia de enfermedad o condición que limite los procedimientos del estudio', 'Protocolo v3.0, criterio de inclusión 4'),
+  ('EXC01', 'exclusion', 5, 'Discapacidad o estado que le impide rellenar por sí mismo los cuestionarios, o incapacidad para completar las visitas a juicio del investigador', 'Protocolo v3.0, criterio de exclusión 1'),
+  ('EXC02', 'exclusion', 6, 'Participa en otro ensayo clínico', 'Protocolo v3.0, criterio de exclusión 2')
+) as c(code, kind, ord, txt, src);
 
 -- ── Visitas ─────────────────────────────────────────────────────────────────
 
@@ -213,7 +244,7 @@ create table public.carmo_deviations (
   updated_at timestamptz not null default timezone('utc', now()),
   constraint carmo_dev_resolution check (status <> 'resolved' or resolution is not null)
 );
-comment on column public.carmo_deviations.category is 'Clasificación TÉCNICA provisional (no definida en el protocolo transcrito).';
+comment on column public.carmo_deviations.category is 'Clasificación TÉCNICA provisional (no definida en el protocolo).';
 
 -- ── Funciones de reglas ─────────────────────────────────────────────────────
 
@@ -236,11 +267,12 @@ declare
   v_seq integer;
 begin
   if tg_op = 'UPDATE' then
-    if new.center_id is distinct from old.center_id or new.study_code is distinct from old.study_code
-       or new.center_seq is distinct from old.center_seq or new.is_synthetic is distinct from old.is_synthetic
+    if new.center_id is distinct from old.center_id or new.screening_code is distinct from old.screening_code
+       or new.screening_seq is distinct from old.screening_seq or new.is_synthetic is distinct from old.is_synthetic
        or new.eligibility_set_id is distinct from old.eligibility_set_id or new.created_by is distinct from old.created_by
-       or new.screening_date is distinct from old.screening_date then
-      raise exception 'El centro, el código, el carácter sintético, la versión de criterios y la fecha de cribado de un paciente no se pueden modificar.';
+       or new.screening_date is distinct from old.screening_date
+       or (old.study_code is not null and (new.study_code is distinct from old.study_code or new.inclusion_seq is distinct from old.inclusion_seq)) then
+      raise exception 'El centro, los códigos, el carácter sintético, la versión de criterios y la fecha de selección de un paciente no se pueden modificar.';
     end if;
     return new;
   end if;
@@ -251,23 +283,46 @@ begin
     raise exception 'El centro % no está autorizado y activo para incluir pacientes.', v_center.name;
   end if;
   if v_center.study_number is null then
-    raise exception 'El centro % no tiene número de estudio asignado.', v_center.name;
+    raise exception 'El centro % no tiene código de centro (3 cifras) asignado.', v_center.name;
   end if;
 
-  insert into carmo_private.patient_code_counters as pc (center_id, last_seq) values (new.center_id, 1)
-  on conflict (center_id) do update set last_seq = pc.last_seq + 1
-  returning last_seq into v_seq;
+  insert into carmo_private.patient_code_counters as pc (center_id, last_screening_seq) values (new.center_id, 1)
+  on conflict (center_id) do update set last_screening_seq = pc.last_screening_seq + 1
+  returning last_screening_seq into v_seq;
 
-  new.center_seq := v_seq;
-  new.study_code := 'CARMO-' || lpad(v_center.study_number::text, 2, '0') || '-' || lpad(v_seq::text, 4, '0');
+  new.screening_seq := v_seq;
+  new.screening_code := 'SEL-' || lpad(v_center.study_number::text, 3, '0') || '-' || lpad(v_seq::text, 3, '0');
+  new.inclusion_seq := null;
+  new.study_code := null;
   new.is_synthetic := (select c.data_mode = 'validation' from carmo_private.study_config c);
   new.eligibility_set_id := (select s.id from public.carmo_eligibility_sets s where s.status = 'active');
   new.status := 'screening';
   new.status_reason := null;
   new.inclusion_date := null;
-  if new.screening_date > current_date then raise exception 'La fecha de cribado no puede ser futura.'; end if;
+  if new.screening_date > current_date then raise exception 'La fecha de selección no puede ser futura.'; end if;
   if auth.uid() is not null then new.created_by := auth.uid(); end if;
   return new;
+end;
+$$;
+
+-- Código de paciente del protocolo: <CCC>-<PP>, consecutivo por centro en orden de inclusión.
+create or replace function carmo_private.assign_inclusion_code(p_center_id uuid)
+returns table (seq integer, code text)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_seq integer;
+  v_number integer;
+begin
+  select c.study_number into v_number from public.carmo_centers c where c.id = p_center_id;
+  update carmo_private.patient_code_counters set last_inclusion_seq = last_inclusion_seq + 1
+   where center_id = p_center_id returning last_inclusion_seq into v_seq;
+  if v_seq > 99 then
+    raise exception 'El código de paciente del protocolo admite 2 cifras (máximo 99 por centro).';
+  end if;
+  return query select v_seq, lpad(v_number::text, 3, '0') || '-' || lpad(v_seq::text, 2, '0');
 end;
 $$;
 
@@ -342,6 +397,7 @@ begin
     end if;
     new.inclusion_date := current_date;
     new.status_reason := null;
+    select a.seq, a.code into new.inclusion_seq, new.study_code from carmo_private.assign_inclusion_code(new.center_id) a;
   elsif old.status = 'screening' and new.status = 'not_included' then
     if new.status_reason is null then raise exception 'Indique el motivo de no inclusión.'; end if;
   elsif old.status = 'included' and new.status in ('withdrawn', 'lost_to_followup') then
@@ -701,8 +757,8 @@ grant insert (center_id, screening_date, responsible_investigator_id) on public.
 grant update (status, status_reason, status_reason_detail, responsible_investigator_id) on public.carmo_patients to authenticated;
 grant insert (patient_id, criterion_id, is_met, verified_in_source), update (is_met, verified_in_source, correction_reason)
   on public.carmo_eligibility_answers to authenticated;
-grant insert (patient_id, document_version, signed_date, investigator_id),
-      update (signed_date, investigator_id, status, withdrawal_date, withdrawal_scope, correction_reason)
+grant insert (patient_id, document_version, signed_date, investigator_id, future_use_choice),
+      update (signed_date, investigator_id, status, withdrawal_date, withdrawal_scope, future_use_choice, correction_reason)
   on public.carmo_consents to authenticated;
 grant insert (patient_id, visit_code, planned_date, actual_date, status, status_reason, modality, responsible_id),
       update (planned_date, actual_date, status, status_reason, modality, responsible_id, record_state, reopen_reason)

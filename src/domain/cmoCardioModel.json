@@ -1,0 +1,121 @@
+{
+  "version": "CMO-CV-SEFH-2024",
+  "title": "Adaptación del Modelo de Atención Farmacéutica CMO en el Paciente con Patologías Cardiovasculares (MAPEX-SEFH)",
+  "source": "Documento oficial MAPEX-SEFH aportado por el IP el 05/11/2026: apartados III (Tablas 1-4), IV (puntos de corte, excepciones) y V (actuaciones y periodicidad)",
+  "blocks": [
+    { "code": "demographic", "label": "Variables demográficas (Tabla 1)", "max": 7 },
+    { "code": "clinical", "label": "Variables clínicas (Tabla 2)", "max": 20 },
+    { "code": "pharmacotherapy", "label": "Variables farmacoterapéuticas (Tabla 3)", "max": 12 },
+    { "code": "sociosanitary", "label": "Variables sociosanitarias (Tabla 4)", "max": 3 }
+  ],
+  "maxScore": 42,
+  "thresholds": { "priority1Min": 23, "priority2Min": 17 },
+  "variables": [
+    { "code": "age_group", "block": "demographic", "group": "Edad", "label": "Edad", "options": [
+      { "value": "under_18", "label": "Menor de 18 años", "points": 0, "excludes": "Paciente pediátrico: aplicar el modelo CMO de paciente crónico pediátrico, no este modelo" },
+      { "value": "19_49", "label": "Entre 19 y 49 años", "points": 0 },
+      { "value": "50_69", "label": "Entre 50 y 69 años", "points": 2 },
+      { "value": "70_plus", "label": "70 años o más", "points": 3 }
+    ] },
+    { "code": "pregnancy", "block": "demographic", "group": "Embarazo", "label": "Paciente embarazada", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí (Prioridad 1 con independencia de la puntuación)", "points": 0, "forcePriority": 1 }
+    ] },
+    { "code": "nutritional_status", "block": "demographic", "group": "Peso / estado nutricional", "label": "Peso / estado nutricional (IMC)", "options": [
+      { "value": "undernutrition", "label": "Desnutrición (IMC < 18,4)", "points": 1 },
+      { "value": "normal", "label": "Peso normal (IMC 18,5-24,9)", "points": 0 },
+      { "value": "overweight", "label": "Sobrepeso (IMC 25-30)", "points": 1 },
+      { "value": "obesity", "label": "Obesidad (IMC > 30 y < 40)", "points": 2 },
+      { "value": "severe_obesity", "label": "Obesidad grave (IMC > 40)", "points": 3 }
+    ] },
+    { "code": "female_cv_condition", "block": "demographic", "group": "Sexo", "label": "Mujer con fibrilación auricular, hipertensión pulmonar (< 45 años / edad fértil) o cardiopatía isquémica", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 1 }
+    ] },
+    { "code": "base_cv_pathology", "block": "clinical", "group": "Patología cardiovascular de base", "label": "Patología CV de base de mayor riesgo: FA, hipertensión pulmonar, insuficiencia cardiaca, prevención secundaria en ECV aterosclerótica (cardiopatía isquémica crónica, EAP, cerebrovascular), síndrome coronario agudo o trasplante cardiaco", "options": [
+      { "value": "no", "label": "No (p. ej., solo hipercolesterolemia familiar en prevención primaria)", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 1 }
+    ] },
+    { "code": "cv_comorbidity", "block": "clinical", "group": "Comorbilidad cardiovascular", "label": "Al menos una patología CV además de la de base (amiloidosis cardiaca, cardiopatía isquémica/EAC/IAM previo, valvulopatía, EAP, FA, hipertensión pulmonar, ictus, insuficiencia cardiaca)", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 2 }
+    ] },
+    { "code": "hf_ischemic_combination", "block": "clinical", "group": "Comorbilidad cardiovascular", "label": "Combinación de insuficiencia cardiaca y cardiopatía isquémica", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 3 }
+    ] },
+    { "code": "hf_af_combination", "block": "clinical", "group": "Comorbilidad cardiovascular", "label": "Combinación de insuficiencia cardiaca y fibrilación auricular", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 3 }
+    ] },
+    { "code": "non_cv_comorbidity", "block": "clinical", "group": "Comorbilidad no cardiovascular", "label": "Al menos una: anemia, apnea obstructiva del sueño, enfermedad inflamatoria (linfopenia), EPOC, VIH, cáncer activo, ERC (TFGe < 60), diabetes mellitus tipo 1 o 2", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 1 }
+    ] },
+    { "code": "dyslipidemia_above_target", "block": "clinical", "group": "Dislipemia", "label": "cLDL por encima del objetivo (< 40 mg/dl tras segundo evento en 2 años; < 55 mg/dl prevención secundaria de riesgo muy alto / IC de riesgo muy elevado; < 70 mg/dl riesgo alto)", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 2 }
+    ] },
+    { "code": "lvef_below_40", "block": "clinical", "group": "Gravedad de la afectación", "label": "Fracción de eyección del ventrículo izquierdo < 40 %", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 1 }
+    ] },
+    { "code": "venous_thromboembolism", "block": "clinical", "group": "Gravedad de la afectación", "label": "Tromboembolismo venoso", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 1 }
+    ] },
+    { "code": "hypertension", "block": "clinical", "group": "Hipertensión arterial", "label": "PAS ≥ 140 / PAD ≥ 90 mmHg, o tratamiento antihipertensivo con indicación de HTA si se desconocen los valores", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 2 }
+    ] },
+    { "code": "admissions_emergencies", "block": "clinical", "group": "Ingresos / urgencias en el último año", "label": "≥ 2 hospitalizaciones en 12 meses y/o ≥ 3 visitas a urgencias en el último año relacionadas con mal control de la patología o del tratamiento", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 2 }
+    ] },
+    { "code": "first_year_post_coronary_event", "block": "clinical", "group": "Primer año tras un evento coronario", "label": "Síndrome coronario o revascularización en los 12 meses previos", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 2 }
+    ] },
+    { "code": "regimen_changes", "block": "pharmacotherapy", "group": "Cambios en el régimen de la medicación", "label": "Cambios significativos en el régimen desde la última visita de AF (a valorar por el profesional)", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 1 }
+    ] },
+    { "code": "regimen_complexity", "block": "pharmacotherapy", "group": "Complejidad del régimen", "label": "Al menos un medicamento con pautas complejas de administración (valorar con MRCI)", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 1 }
+    ] },
+    { "code": "high_risk_medication", "block": "pharmacotherapy", "group": "Medicamentos de alto riesgo", "label": "Algún medicamento del listado ISMP-España de medicamentos de alto riesgo", "options": [
+      { "value": "no", "label": "No", "points": 0 },
+      { "value": "yes", "label": "Sí", "points": 4 }
+    ] },
+    { "code": "pharmacotherapy_goals_not_met", "block": "pharmacotherapy", "group": "Objetivos farmacoterapéuticos", "label": "Objetivos farmacoterapéuticos NO alcanzados (incluye comorbilidades; también si acaba de iniciar tratamiento sin objetivos previos)", "options": [
+      { "value": "no", "label": "No: objetivos alcanzados", "points": 0 },
+      { "value": "yes", "label": "Sí: objetivos no alcanzados o inicio de tratamiento", "points": 2 }
+    ] },
+    { "code": "polypharmacy", "block": "pharmacotherapy", "group": "Polimedicación", "label": "Principios activos concurrentes y crónicos", "options": [
+      { "value": "lt_7", "label": "Menos de 7", "points": 0 },
+      { "value": "7_10", "label": "7-10", "points": 1 },
+      { "value": "10_plus", "label": "≥ 10", "points": 2 }
+    ] },
+    { "code": "adherence", "block": "pharmacotherapy", "group": "Sospecha o falta de adherencia", "label": "Adherencia (Morisky-Green-Levine + registro de dispensación / HCE)", "options": [
+      { "value": "adherent", "label": "Adherente", "points": 0 },
+      { "value": "at_risk", "label": "Riesgo de falta de adherencia y/o persistencia subóptima", "points": 1 },
+      { "value": "non_adherent", "label": "Falta de adherencia", "points": 2 }
+    ] },
+    { "code": "physical_activity", "block": "sociosanitary", "group": "Actividad física", "label": "Actividad física", "options": [
+      { "value": "regular", "label": "Ni sedentario ni actividad intensa", "points": 0 },
+      { "value": "sedentary", "label": "Estilo de vida sedentario", "points": 1 },
+      { "value": "intense", "label": "Actividad física intensa (p. ej., deportista de élite)", "points": 1 }
+    ] },
+    { "code": "tobacco", "block": "sociosanitary", "group": "Tabaco", "label": "Tabaco", "options": [
+      { "value": "no", "label": "No fumador / exfumador hace más de 5 años", "points": 0 },
+      { "value": "former_5y", "label": "Exfumador en los últimos 5 años", "points": 1 },
+      { "value": "current", "label": "Fumador activo", "points": 2 }
+    ] }
+  ],
+  "followUp": {
+    "1": { "label": "Reestratificar cada 3-6 meses; seguimiento como máximo a los 45 días de aplicar el modelo", "restratifyMonths": 6, "firstFollowUpDays": 45 },
+    "2": { "label": "Reestratificación anual, o antes por decisión profesional o cambio del tratamiento CV", "restratifyMonths": 12, "firstFollowUpDays": null },
+    "3": { "label": "Reestratificar si se detecta la necesidad (decisión profesional o cambio del tratamiento CV)", "restratifyMonths": null, "firstFollowUpDays": null }
+  }
+}

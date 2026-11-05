@@ -1,0 +1,50 @@
+name: Deploy GitHub Pages
+
+# SOLO MANUAL (decisión del IP 05/11/2026: despliegue para validación con datos sintéticos en el centro de
+# prueba). Sin datos reales hasta completar docs/CARMO_GO_LIVE_CHECKLIST.md.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Requisito único (administrador del repositorio): Settings → Pages → Source = «GitHub Actions».
+      - uses: actions/configure-pages@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -b && npm test
+      - name: Build
+        env:
+          # Valores PÚBLICOS (clave anon, no service-role): viajan igualmente en el JavaScript del navegador;
+          # la protección real es la RLS. Los secretos del repositorio, si existen, tienen prioridad.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://efjpjponblmdjlhmmiet.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmanBqcG9uYmxtZGpsaG1taWV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExMjc1NTcsImV4cCI6MjEwNjcwMzU1N30.B4vWbedSpg8p0Y3e6NifTuUO0IGzVBf1Y3-dNyxWbdQ' }}
+          CARMO_BASE_PATH: ${{ vars.CARMO_BASE_PATH || '/carmo/' }}
+        run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

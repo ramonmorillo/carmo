@@ -1,0 +1,56 @@
+/*
+ * CARMO · color de marca (azul profundo). La hoja base (main.css) procede de DERMAPEX/COAMO y usa
+ * variables --iris-teal-*; aquí se redefinen para que las aplicaciones no se confundan a simple vista.
+ */
+:root {
+  --iris-teal-950: #0b1a33;
+  --iris-teal-900: #12264a;
+  --iris-teal-800: #1a3463;
+  --iris-teal-700: #21427d;
+  --iris-teal-600: #2b5296;
+  --iris-teal-300: #a3b6d9;
+  --iris-teal-200: #cbd7ec;
+  --iris-teal-100: #e5ecf7;
+  --iris-teal-50: #f2f6fb;
+}
+
+.carmo-banner {
+  background: var(--iris-warning-bg);
+  border-bottom: 1px solid var(--iris-warning-border);
+  color: var(--iris-warning);
+  font-size: 0.88rem;
+  padding: 0.45rem 1rem;
+  text-align: center;
+}
+
+.carmo-table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
+.carmo-table th, .carmo-table td { text-align: left; padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--iris-divider); vertical-align: top; }
+.carmo-table th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--iris-muted); font-weight: 600; }
+.carmo-table td.numeric, .carmo-table th.numeric { text-align: right; font-variant-numeric: tabular-nums; }
+
+.carmo-form { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); align-items: end; }
+.carmo-form label { display: grid; gap: 0.25rem; font-size: 0.9rem; color: var(--iris-text-secondary); }
+.carmo-form input, .carmo-form select, .carmo-form textarea { font: inherit; padding: 0.45rem 0.55rem; border: 1px solid var(--iris-border-strong); border-radius: 6px; background: var(--iris-surface); color: var(--iris-text); }
+.carmo-form .span-all { grid-column: 1 / -1; }
+.carmo-hint { font-size: 0.82rem; color: var(--iris-muted); margin: 0.2rem 0 0; }
+.carmo-kpis { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.carmo-kpi { background: var(--iris-surface); border: 1px solid var(--iris-border); border-radius: 10px; padding: 0.8rem 0.95rem; }
+.carmo-kpi strong { display: block; font-size: 1.6rem; color: var(--iris-teal-800); font-variant-numeric: tabular-nums; }
+.carmo-kpi span { font-size: 0.85rem; color: var(--iris-text-secondary); }
+.carmo-kpi small { display: block; color: var(--iris-muted); font-size: 0.78rem; margin-top: 0.2rem; }
+.carmo-bar { height: 0.55rem; border-radius: 999px; background: var(--iris-teal-100); overflow: hidden; }
+.carmo-bar > span { display: block; height: 100%; background: var(--iris-teal-700); }
+.carmo-items { display: grid; gap: 0.5rem; }
+.carmo-item { display: grid; grid-template-columns: 5.5rem 1fr; gap: 0.5rem; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid var(--iris-divider); }
+.carmo-item fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; }
+.carmo-item label { display: inline-flex; gap: 0.3rem; align-items: center; font-size: 0.9rem; }
+.carmo-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.carmo-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0 1rem; }
+.carmo-section + .carmo-section { margin-top: 1rem; }
+.carmo-dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; margin: 0; }
+.carmo-dl dt { color: var(--iris-muted); font-size: 0.88rem; }
+.carmo-dl dd { margin: 0; }
+@media (max-width: 720px) {
+  .carmo-item { grid-template-columns: 1fr; }
+  .carmo-dl { grid-template-columns: 1fr; }
+}
