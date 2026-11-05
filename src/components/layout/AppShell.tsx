@@ -94,6 +94,7 @@ export function AppShell() {
             {ROLE_CAN.writeQuestionnaire(r) || r === 'monitor' ? <NavLink to="/questionnaires" className={navLinkClass}>Cuestionarios</NavLink> : null}
             {ROLE_CAN.readClinical(r) ? <NavLink to="/stratification" className={navLinkClass}>Estratificación</NavLink> : null}
             {ROLE_CAN.readClinical(r) ? <NavLink to="/interventions" className={navLinkClass}>Intervenciones</NavLink> : null}
+            {ROLE_CAN.readClinical(r) ? <NavLink to="/quality" className={navLinkClass}>Calidad</NavLink> : null}
             {ROLE_CAN.readClinical(r) ? <NavLink to="/export" className={navLinkClass}>Exportación</NavLink> : null}
             {ROLE_CAN.admin(r) ? <NavLink to="/admin" className={navLinkClass}>Administración</NavLink> : null}
             <NavLink to="/project" className={navLinkClass}>Proyecto</NavLink>

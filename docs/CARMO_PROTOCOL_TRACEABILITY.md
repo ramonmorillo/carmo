@@ -37,3 +37,5 @@ Versión 0.2 · 05/11/2026. «§» remite al encargo de desarrollo; «Protocolo�
 | §12 Doble envío | Todos los formularios | — | Guarda + índices únicos | — | UT «impide el doble envío» |
 | §13 Exportación íntegra y reproducible | Exportación | lector paginado + conciliación | Recuento BD = exportado; CRC y SHA-256 | ZIP | UT export G5 y «lectura incompleta aborta» |
 | §14 Dashboard con denominadores | Inicio | `computeDashboard` (lectura paginada conciliada) | RLS | — | UT `dashboard.test.ts` |
+| §11 / §14 Datos faltantes, visitas pendientes, tasa de finalización por centro | Calidad (`/quality`); ficha → Datos pendientes | derivada (`computePending`) | Reglas del esquema de procedimientos (variables y cuestionarios por visita), estratificación inicial, validación pendiente, reestratificación según la prioridad, visitas vencidas o sin cerrar, desviaciones abiertas | — | UT `pending.test.ts` |
+| §12 Histórico de cambios (valor anterior y nuevo, motivo, autor) visible | Ficha → Historial de cambios (coordinación y monitor) | `carmo_audit_log` | RLS: coordinación (todo) y monitor (su centro) | — | DB auditoría; UT `auditDiff` |

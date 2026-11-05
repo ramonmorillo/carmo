@@ -19,14 +19,18 @@ import { useCarmoSession, type CarmoSession } from '../lib/session';
 import { useSave } from '../lib/useSave';
 import {
   carmo, carmoWrite, type Administration, type Consent, type Deviation, type Dispensation, type EligibilityAnswer, type EligibilityCriterion,
+  type CmoModel, type Instrument, type ObservationRow, type Variable,
   type Patient, type Profile, type Stratification, type Treatment, type TreatmentEvent, type Visit, type VisitWindow,
 } from '../services/carmoData';
 import { TreatmentPanel } from './TreatmentPanel';
+import { AuditHistory } from './AuditHistory';
+import { computePending, PENDING_KIND_LABELS } from '../domain/pending';
 
 type Data = {
   patient: Patient; visits: Visit[]; windows: VisitWindow[]; criteria: EligibilityCriterion[]; answers: EligibilityAnswer[]; consents: Consent[];
   blockers: string[]; administrations: Administration[]; deviations: Deviation[]; profiles: Profile[];
   treatments: Treatment[]; events: TreatmentEvent[]; dispensations: Dispensation[]; currentStrat: Stratification | null;
+  strats: Stratification[]; observations: ObservationRow[]; variables: Variable[]; instruments: Instrument[]; models: CmoModel[];
 };
 
 export function PatientDetailPage() {
@@ -40,16 +44,17 @@ export function PatientDetailPage() {
       const patient = await carmo.patient(id);
       if (!patient) { setError('Paciente no encontrado o fuera de su ámbito.'); return; }
       const clinical = ROLE_CAN.readClinical(session.role);
-      const [visits, windows, criteria, answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations, strats] = await Promise.all([
+      const [visits, windows, criteria, answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations, strats, observations, variables, instruments, models] = await Promise.all([
         carmo.visits(id), carmo.windows(), carmo.criteria(), clinical ? carmo.answers(id) : [], clinical ? carmo.consents(id) : [],
         patient.status === 'screening' ? carmo.inclusionBlockers(id) : Promise.resolve([] as string[]),
         carmo.administrations(id), clinical ? carmo.deviations(id) : [], carmo.profiles(),
         clinical ? carmo.treatments(id) : [], clinical ? carmo.treatmentEvents(id) : [], clinical ? carmo.dispensations(id) : [],
         clinical ? carmo.stratifications(id) : [],
+        clinical ? carmo.observations(id) : [], carmo.variables(), carmo.instruments(), clinical ? carmo.cmoModels() : [],
       ]);
       setData({ patient, visits, windows, criteria: criteria.filter((c) => c.set_id === patient.eligibility_set_id).sort((a, b) => a.ordinal - b.ordinal),
         answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations,
-        currentStrat: strats.find((s) => !strats.some((n) => n.supersedes_id === s.id)) ?? null });
+        currentStrat: strats.find((s) => !strats.some((n) => n.supersedes_id === s.id)) ?? null, strats, observations, variables, instruments, models });
     } catch (e) { setError((e as Error).message); }
   }, [id, session.role]);
   useEffect(() => { void load(); }, [load]);
@@ -75,6 +80,7 @@ export function PatientDetailPage() {
         <div className="carmo-kpi"><span>IEXPAC basal → final</span><strong style={{ fontSize: '1rem' }}>{fmtNum(paired.baseline)} → {fmtNum(paired.final)}</strong><small>{paired.paired ? `Diferencia ${fmtNum(paired.difference)}` : 'Sin par completo'}</small></div>
         <div className="carmo-kpi"><span>Visitas previstas vencidas</span><strong>{pendingVisits}</strong></div>
       </section>
+      {ROLE_CAN.readClinical(session.role) ? <PendingPanel data={data} /> : null}
       {patient.status === 'screening' ? <InclusionSection data={data} session={session} reload={load} /> : null}
       {patient.status !== 'screening' && patient.status !== 'not_included' ? <VisitsSection data={data} session={session} reload={load} /> : null}
       {ROLE_CAN.readClinical(session.role) && patient.status !== 'screening' && patient.status !== 'not_included' ? (
@@ -82,6 +88,7 @@ export function PatientDetailPage() {
       ) : null}
       {ROLE_CAN.writeClinical(session.role) && patient.status === 'included' ? <StudyExitSection data={data} reload={load} /> : null}
       {ROLE_CAN.readClinical(session.role) && patient.status !== 'screening' ? <DeviationsSection data={data} session={session} reload={load} /> : null}
+      {session.role === 'coordinator' || session.role === 'monitor' ? <AuditHistory patientId={patient.id} /> : null}
     </div>
   );
 }
@@ -275,6 +282,28 @@ function DeviationsSection({ data, session, reload }: { data: Data; session: Car
         </form>
       ) : null}
       <SaveStatus state={save.state} />
+    </section>
+  );
+}
+
+function PendingPanel({ data }: { data: Data }) {
+  const validated = data.models.find((m) => m.status === 'validated');
+  const items = computePending({
+    patientStatus: data.patient.status, visits: data.visits, variables: data.variables, observations: data.observations,
+    administrations: data.administrations, instruments: data.instruments, stratifications: data.strats, deviations: data.deviations,
+    followUp: (validated?.definition.followUp as Record<string, { restratifyMonths: number | null }> | undefined) ?? null, today: todayIso(),
+  });
+  if (data.patient.status === 'screening' || data.patient.status === 'not_included') return null;
+  const tone = (sev: string) => (sev === 'high' ? 'danger' : sev === 'medium' ? 'warning' : 'neutral') as 'danger' | 'warning' | 'neutral';
+  return (
+    <section className="card">
+      <h2>Datos pendientes {items.length ? <StatusBadge tone="warning">{items.length}</StatusBadge> : <StatusBadge tone="positive">Al día</StatusBadge>}</h2>
+      {items.length === 0 ? <p className="text-muted">No hay datos pendientes según el protocolo y el modelo CMO.</p> : (
+        <ul>{items.map((i, n) => (
+          <li key={n}><StatusBadge tone={tone(i.severity)}>{PENDING_KIND_LABELS[i.kind]}</StatusBadge>{' '}
+            {i.visitId ? <Link to={`/visits/${i.visitId}`}>{i.message}</Link> : i.kind === 'stratification' ? <Link to={`/patients/${data.patient.id}/stratification`}>{i.message}</Link> : i.message}</li>
+        ))}</ul>
+      )}
     </section>
   );
 }
