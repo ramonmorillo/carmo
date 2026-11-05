@@ -34,11 +34,18 @@ function fixture(): Record<string, Record<string, unknown>[]> {
       obs('o1', VB, 'ldl_c', 150, 'mg/dL'), obs('o2', VB, 'ldl_c', 140, 'mg/dL', 'o1'), obs('o3', VF, 'ldl_c', 70, 'mg/dL'),
       obs('o4', VB, 'weight', 80, 'kg'), obs('o5', VB, 'height', 175, 'cm'),
     ],
-    carmo_questionnaire_administrations: [
+    carmo_questionnaire_administrations: ([
       { id: 'q1', visit_id: VB, patient_id: P1, instrument_code: 'IEXPAC', instrument_version: 'IEXPAC-11', status: 'completed', not_done_reason: null, administration_mode: 'self', data_source: 'paper', administration_date: '2026-01-10', responses: iex(3), items_answered: 11, scores: { global: 4.5455, sum: 33, valid: true }, scoring_version: 'carmo-iexpac-1', evaluator_role: 'external_evaluator', revision: 1 },
       { id: 'q2', visit_id: VF, patient_id: P1, instrument_code: 'IEXPAC', instrument_version: 'IEXPAC-11', status: 'completed', not_done_reason: null, administration_mode: 'self', data_source: 'paper', administration_date: '2027-01-05', responses: iex(4), items_answered: 11, scores: { global: 7.2727, sum: 44, valid: true }, scoring_version: 'carmo-iexpac-1', evaluator_role: 'external_evaluator', revision: 1 },
+    ] as Record<string, unknown>[]).concat([
+      { id: 'q3', visit_id: VB, patient_id: P1, instrument_code: 'EQ5D3L', instrument_version: 'EQ-5D-3L-ES-ES-v2.0-self', status: 'completed', not_done_reason: null, administration_mode: 'self', data_source: 'paper', administration_date: '2026-01-10', responses: { 1: 1, 2: 1, 3: 2, 4: 1, 5: 3 }, vas_value: 60, items_answered: 5, scores: { profile: '11213', vas: 60, valid: true }, scoring_version: 'carmo-eq5d3l-1', evaluator_role: 'site_pi', revision: 1 },
+      { id: 'q4', visit_id: VF, patient_id: P1, instrument_code: 'EQ5D3L', instrument_version: 'EQ-5D-3L-ES-ES-v2.0-self', status: 'completed', not_done_reason: null, administration_mode: 'self', data_source: 'paper', administration_date: '2027-01-05', responses: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 2 }, vas_value: 75, items_answered: 5, scores: { profile: '11112', vas: 75, valid: true }, scoring_version: 'carmo-eq5d3l-1', evaluator_role: 'external_evaluator', revision: 1 },
+      { id: 'q5', visit_id: VB, patient_id: P1, instrument_code: 'MORISKY_GREEN', instrument_version: 'MG-4-ES', status: 'completed', not_done_reason: null, administration_mode: 'interviewer', data_source: 'paper', administration_date: '2026-01-10', responses: { 1: 1, 2: 1, 3: 0, 4: 0 }, items_answered: 4, scores: { adherent: false, valid: true }, scoring_version: 'carmo-mg-1', evaluator_role: 'site_pi', revision: 1 },
+    ]),
+    carmo_treatments: [
+      { id: 't1', patient_id: P1, active_ingredient: 'Evolocumab', is_study_lipid_therapy: true, start_date: '2025-06-01', status: 'active', started_before_inclusion: true },
     ],
-    carmo_treatments: [], carmo_treatment_events: [], carmo_dispensations: [], carmo_interventions: [], carmo_stratifications: [], carmo_deviations: [],
+    carmo_treatment_events: [], carmo_dispensations: [], carmo_interventions: [], carmo_stratifications: [], carmo_deviations: [],
   };
 }
 
@@ -84,6 +91,7 @@ describe('exportación de investigación', () => {
     const bundle = await runResearchExport(memorySource(fixture()), options);
     const [header, ...rows] = csvOf(bundle.zip, 'analisis/longitudinal_pareado.csv');
     const r1 = Object.fromEntries(header.map((h, i) => [h, rows.find((r) => r[0] === '001-01')![i]]));
+    expect(r1).toMatchObject({ eq5d_perfil_basal: '11213', eq5d_eva_dif: '15', mg_adherente_basal: '0', mg_adherente_final: '', naive_derivado: '0' });
     expect(r1).toMatchObject({ iexpac_basal: '4.5455', iexpac_final: '7.2727', iexpac_dif: '2.7272', ldl_c_basal: '140', ldl_c_final: '70', ldl_c_dif: '-70', imc_basal: '26.1', imc_final: '' });
     const r2 = Object.fromEntries(header.map((h, i) => [h, rows.find((r) => r[0] === '001-02')![i]]));
     expect(r2.iexpac_basal).toBe('');

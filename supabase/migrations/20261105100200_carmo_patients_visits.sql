@@ -46,7 +46,7 @@ create table public.carmo_patients (
 comment on table public.carmo_patients is
   'Sujeto CARMO seudonimizado (datos personales seudonimizados: siguen siendo datos personales). Sin identificadores directos. is_synthetic lo fija la BD según el modo del estudio.';
 comment on column public.carmo_patients.status_reason is
-  'Vocabulario TÉCNICO PROVISIONAL (el protocolo disponible no se ha transcrito): validar con coordinación (CARMO_REGULATORY_GAPS RG-12).';
+  'Vocabulario TÉCNICO PROVISIONAL (no definido en el protocolo v3.0): validar con coordinación (CARMO_REGULATORY_GAPS RG-12).';
 create index idx_carmo_patients_center on public.carmo_patients(center_id);
 
 create table carmo_private.patient_code_counters (
@@ -244,7 +244,7 @@ create table public.carmo_deviations (
   updated_at timestamptz not null default timezone('utc', now()),
   constraint carmo_dev_resolution check (status <> 'resolved' or resolution is not null)
 );
-comment on column public.carmo_deviations.category is 'Clasificación TÉCNICA provisional (no definida en el protocolo transcrito).';
+comment on column public.carmo_deviations.category is 'Clasificación TÉCNICA provisional (no definida en el protocolo).';
 
 -- ── Funciones de reglas ─────────────────────────────────────────────────────
 

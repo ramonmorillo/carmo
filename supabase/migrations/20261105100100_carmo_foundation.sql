@@ -85,7 +85,7 @@ create table public.carmo_centers (
   constraint carmo_centers_active_needs_authorization check (not is_active or participation_status = 'authorized')
 );
 comment on table public.carmo_centers is
-  'Centros CARMO. Un centro solo incluye pacientes si está authorized (con referencia documental) y activo. Ninguno se crea por defecto.';
+  'Centros CARMO. Un centro solo incluye pacientes si está authorized (con referencia documental) y activo. Los 14 centros del protocolo v3.0 se registran pendientes e inactivos.';
 
 create table public.carmo_center_memberships (
   id uuid primary key default gen_random_uuid(),

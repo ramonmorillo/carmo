@@ -93,7 +93,7 @@ Además: estados borrador/revisado/cerrado con bloqueo de dependientes; reapertu
 
 - `ci.yml`: typecheck, pruebas y build en cada PR, y la batería SQL completa contra PostgreSQL 16 con el historial canónico de DERMAPEX (misma rama si existe; si no, `main`).
 - `deploy-pages.yml`: **solo manual** (`workflow_dispatch`) hasta completar CARMO_GO_LIVE_CHECKLIST. Secretos: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (nunca la service-role).
-- Migraciones: **no aplicadas** en Supabase. Se aplican en orden, tras la aprobación explícita (RG-25), con el procedimiento de la lista de verificación.
+- Migraciones: **aplicadas en producción el 05/11/2026** con la aprobación del IP (versiones `20261105133925`…`20261105134533`, en el orden de los ficheros 00-06). A partir de ahora son inmutables: todo cambio va en una migración nueva, probada con `scripts/test-db.sh` antes de aplicarse.
 
 ## 8. Estado por fases
 
@@ -103,7 +103,7 @@ Además: estados borrador/revisado/cerrado con bloqueo de dependientes; reapertu
 | 1 Infraestructura | Completa (migraciones no aplicadas en producción) |
 | 2 eCRD | Variables, criterios (borrador), calendario y código de paciente transcritos del protocolo v3.0; pendientes de conciliar con la v2.0 aprobada |
 | 3 Modelo CMO | Motor genérico + estructura; **cálculo desactivado** (RG-21, RG-22) |
-| 4 Cuestionarios | IEXPAC completo; EQ-5D/EVASAF/Morisky bloqueados |
+| 4 Cuestionarios | IEXPAC, EQ-5D-3L, EVASAF y Morisky-Green habilitados (los tres últimos reutilizados de COAMO o DERMAPEX); quedan pendientes licencias y la variable resumen de EVASAF |
 | 5 Gestión científica | Panel, agenda, exportación verificada; informes PDF individuales no implementados |
 | 6 Validación | Pruebas DB y UT superadas; E2E con navegador y backend local no ejecutado (PostgREST no disponible en el entorno) |
 | 7 Entrega | Documentación y lista de verificación; **no apto para datos reales** |

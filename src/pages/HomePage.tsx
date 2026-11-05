@@ -31,7 +31,7 @@ export function HomePage() {
     Promise.all([
       read<{ id: string; center_id: string; status: string; inclusion_date: string | null }>('carmo_patients', 'id,center_id,status,inclusion_date'),
       read<{ id: string; patient_id: string; visit_code: string; status: string; planned_date: string | null }>('carmo_visits', 'id,patient_id,visit_code,status,planned_date'),
-      read<{ id: string; visit_id: string; patient_id: string; instrument_code: string; status: string; scores: { global: number | null; valid: boolean } | null }>('carmo_questionnaire_administrations', 'id,visit_id,patient_id,instrument_code,status,scores'),
+      read<{ id: string; visit_id: string; patient_id: string; instrument_code: string; status: string; scores: { global?: number | null; valid?: boolean; vas?: number | null; adherent?: boolean | null } | null }>('carmo_questionnaire_administrations', 'id,visit_id,patient_id,instrument_code,status,scores'),
       clinical ? read<{ id: string; supersedes_id: string | null; patient_id: string; visit_id: string | null; variable_code: string; value_numeric: number | null; unit: string | null; is_missing: boolean }>('carmo_observations', 'id,supersedes_id,patient_id,visit_id,variable_code,value_numeric,unit,is_missing') : Promise.resolve([]),
       clinical ? read<{ id: string }>('carmo_interventions', 'id') : Promise.resolve([]),
     ]).then(([patients, visits, administrations, observations, interventions]) =>
@@ -83,7 +83,9 @@ export function HomePage() {
             <tr><th>Intervenciones registradas</th><td>{dash.interventions}</td></tr>
           </> : null}
           <tr><th>Prioridades CMO</th><td>No disponibles: modelo CMO cardiovascular no validado.</td></tr>
-          <tr><th>EQ-5D · EVASAF · Morisky-Green</th><td>Instrumentos pendientes de versión/licencia/puntuación: sin datos.</td></tr>
+          <tr><th>EQ-5D-3L EVA basal / final</th><td><StatCell s={dash.eqVasBaseline} /> · <StatCell s={dash.eqVasFinal} /></td></tr>
+          <tr><th>Morisky-Green: adherentes basal / final</th><td>{dash.moriskyBaseline.adherent} de {dash.moriskyBaseline.n} · {dash.moriskyFinal.adherent} de {dash.moriskyFinal.n} <span className="text-muted">(solo cuestionarios completos)</span></td></tr>
+          <tr><th>EVASAF</th><td>Resultado por ítem en la exportación (sin total definido).</td></tr>
         </tbody></table>
       </section>
     </div>

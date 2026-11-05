@@ -81,7 +81,7 @@ Cada observación lleva: valor tipado, unidad, `observed_date`, `data_source`, `
 | `coronary_revascularization` | Revascularización coronaria | Sí/no + fecha | Ídem | Todas | IMPL |
 | `other_arterial_revascularization` | Revascularización de otras arterias | Sí/no + fecha | Ídem | Todas | IMPL |
 | `peripheral_artery_disease` | Enfermedad arterial periférica | Sí/no + fecha | Ídem | Todas | IMPL |
-| `naive_patient` | Paciente naïve (variable exploratoria; «Diseño», p. 8) | Sí/no | — | BASAL | IMPL, **definición pendiente** (RG-39) |
+| `naive_patient` | Paciente naïve = **nuevo a tratamiento** (variable exploratoria; «Diseño», p. 8; definición del IP) | Sí/no | — | BASAL | IMPL; contraste con tratamientos (`naive_derivado`) |
 | — | Variables del modelo CMO (tablas 1-4: demográficas, clínicas, farmacoterapéuticas, sociosanitarias) | — | — | BASAL (+ reestratificación) | **NO-IMPL**: pendiente del documento CMO (RG-21) |
 
 ## 4. Tratamiento farmacológico
@@ -100,9 +100,9 @@ Cada observación lleva: valor tipado, unidad, `observed_date`, `data_source`, `
 | Instrumento | Definición del protocolo | Visitas | Estado |
 |---|---|---|---|
 | IEXPAC | 11 ítems; Siempre = 5 … Nunca = 1; global = 10 × (Σ − 11) / 44 (0-10); final por evaluador externo | BASAL, FINAL | IMPL (condicional: NO-IMPL, RG-19; evaluador: RG-32) |
-| EuroQoL-5D | 5 dimensiones (movilidad, cuidado personal, actividades cotidianas, dolor/malestar, ansiedad/depresión) + EVA 0-100 | BASAL, FINAL | **BLOQ** (3L o 5L, RG-16) |
-| EVASAF | Farm Hosp 2015;39(3), «ADJUNTO» | BASAL, FINAL | **BLOQ** (RG-17) |
-| Morisky-Green | «(%)» de adherencia | BASAL, S24, FINAL | **BLOQ** (RG-40) |
+| EQ-5D-3L (reutilizado de COAMO) | 5 dimensiones (movilidad, cuidado personal, actividades cotidianas, dolor/malestar, ansiedad/depresión), niveles 1-3, + EVA 0-100. Versión según modalidad (v2.0 autoadministrada / v1.0 entrevista). Perfil de 5 dígitos solo si está completo; **sin índice** | BASAL, FINAL | IMPL (RG-16) |
+| EVASAF (reutilizada de COAMO) | 10 ítems, 1 (muy deficiente) – 5 (excelente); **sin total** | BASAL, FINAL | IMPL (variable resumen: RG-17) |
+| Morisky-Green (reutilizado de DERMAPEX) | 4 ítems sí(1)/no(0); adherente = No-Sí-No-No, solo con los 4 ítems; «(%)» = proporción de adherentes | BASAL, S24, FINAL | IMPL (licencia y redacción: RG-40) |
 
 Metadatos (EXT-TÉC): estado, motivo de no realización, modalidad, soporte, fecha, evaluador, rol, **conformidad del evaluador**, versión, revisión, motivo de corrección. Un solo registro por instrumento y visita.
 

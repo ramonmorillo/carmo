@@ -309,16 +309,37 @@ select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administr
 select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status) select id, patient_id, 'IEXPAC', 'in_progress' from public.carmo_visits where visit_code = 'S12'$$,
   'IEXPAC solo en basal y final');
 select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status) select id, patient_id, 'EQ5D5L', 'in_progress' from public.carmo_visits where visit_code = 'BASAL'$$,
-  'EQ-5D pendiente de especificación: no admite datos');
+  'EQ-5D-5L retirado (se usa 3L): no admite datos');
 select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status, responses) select id, patient_id, 'IEXPAC', 'in_progress', '{"1":6}' from public.carmo_visits where visit_code = 'FINAL'$$,
   'respuesta fuera de rango rechazada');
 select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status, responses) select id, patient_id, 'IEXPAC', 'in_progress', '{"12":3}' from public.carmo_visits where visit_code = 'FINAL'$$,
   'ítem inexistente rechazado');
+insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status, administration_mode, data_source, administration_date, responses, vas_value)
+  select id, patient_id, 'EQ5D3L', 'completed', 'self', 'paper', current_date, '{"1":1,"2":1,"3":2,"4":1,"5":3}'::jsonb, 70 from public.carmo_visits where visit_code = 'BASAL';
+select carmo_test.expect((select instrument_version = 'EQ-5D-3L-ES-ES-v2.0-self' and scores ->> 'profile' = '11213' and (scores ->> 'vas')::integer = 70
+  from public.carmo_questionnaire_administrations where instrument_code = 'EQ5D3L'), 'EQ-5D-3L: versión por modalidad, perfil 11213 y EVA 70 (sin índice)');
+select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status, administration_mode, data_source, administration_date, responses)
+  select id, patient_id, 'EQ5D3L', 'completed', 'assisted', 'paper', current_date, '{"1":1}'::jsonb from public.carmo_visits where visit_code = 'FINAL'$$, 'EQ-5D-3L no admite la modalidad «con ayuda»');
+select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status, responses)
+  select id, patient_id, 'EQ5D3L', 'in_progress', '{"1":4}'::jsonb from public.carmo_visits where visit_code = 'FINAL'$$, 'EQ-5D-3L: nivel 4 fuera de rango');
+insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status, administration_mode, data_source, administration_date, responses)
+  select id, patient_id, 'EVASAF', 'completed', 'self', 'paper', current_date, '{"1":5,"2":4,"3":5,"4":3,"5":4,"6":5,"7":5,"8":4,"9":5,"10":5}'::jsonb from public.carmo_visits where visit_code = 'BASAL';
+select carmo_test.expect((select (scores ->> 'complete')::boolean and scores ->> 'total' is null from public.carmo_questionnaire_administrations where instrument_code = 'EVASAF'),
+  'EVASAF: 10 ítems completos, sin total inventado');
+select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status, responses)
+  select id, patient_id, 'EVASAF', 'in_progress', '{"11":3}'::jsonb from public.carmo_visits where visit_code = 'FINAL'$$, 'EVASAF: ítem 11 inexistente');
+insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status, administration_mode, data_source, administration_date, responses)
+  select id, patient_id, 'MORISKY_GREEN', 'completed', 'interviewer', 'paper', current_date, '{"1":0,"2":1,"3":0,"4":0}'::jsonb from public.carmo_visits where visit_code = 'BASAL';
+select carmo_test.expect((select (scores ->> 'adherent')::boolean from public.carmo_questionnaire_administrations where instrument_code = 'MORISKY_GREEN'), 'Morisky-Green: No-Sí-No-No = adherente');
+select carmo_test.expect_fail($$insert into public.carmo_questionnaire_administrations (visit_id, patient_id, instrument_code, status) select id, patient_id, 'MORISKY_GREEN', 'in_progress' from public.carmo_visits where visit_code = 'S12'$$,
+  'Morisky-Green solo en visita inicial, S24 y final');
 select carmo_test.expect((select count(*) from public.carmo_observations) = 0, 'el evaluador externo no ve datos clínicos');
 select carmo_test.expect_fail($$insert into public.carmo_observations (patient_id, variable_code, value_boolean, observed_date, data_source, temporal_context)
   values (carmo_test.patient_id('SEL-001-002'), 'diabetes', true, current_date, 'clinical_record', 'baseline')$$, 'el evaluador externo no registra datos clínicos');
 commit;
 
+select carmo_test.expect((carmo_private.questionnaire_scores('MORISKY_GREEN', '{"1":1,"2":1,"3":0,"4":0}', null) ->> 'adherent')::boolean = false
+  and carmo_private.questionnaire_scores('MORISKY_GREEN', '{"1":0,"2":1,"3":0}', null) ->> 'adherent' is null, 'Morisky-Green: no adherente con un fallo; sin resultado con 3/4 ítems');
 select carmo_test.expect((carmo_private.iexpac_score('{"1":1,"2":1,"3":1,"4":1,"5":1,"6":1,"7":1,"8":1,"9":1,"10":1,"11":1}') ->> 'global')::numeric = 0, 'G6: IEXPAC 11 × 1 = 0');
 select carmo_test.expect((carmo_private.iexpac_score('{"1":3,"2":3,"3":3,"4":3,"5":3,"6":3,"7":3,"8":3,"9":3,"10":3,"11":4}') ->> 'global')::numeric = 5.2273, 'G6: IEXPAC suma 34 = 5,2273');
 
@@ -335,7 +356,7 @@ update public.carmo_visits set record_state = 'closed' where visit_code = 'BASAL
 select carmo_test.expect_fail($$update public.carmo_visits set modality = 'phone' where visit_code = 'BASAL'$$, 'una visita cerrada no se edita');
 select carmo_test.expect_fail($$insert into public.carmo_observations (patient_id, visit_id, variable_code, value_boolean, observed_date, data_source, temporal_context)
   select patient_id, id, 'diabetes', true, current_date, 'clinical_record', 'baseline' from public.carmo_visits where visit_code = 'BASAL'$$, 'no se añaden datos a una visita cerrada');
-select carmo_test.expect_fail($$update public.carmo_questionnaire_administrations set administration_mode = 'interviewer', correction_reason = 'x', revision = 2$$, 'no se corrige un cuestionario de una visita cerrada');
+select carmo_test.expect_fail($$update public.carmo_questionnaire_administrations set administration_mode = 'interviewer', correction_reason = 'x', revision = 2 where instrument_code = 'IEXPAC'$$, 'no se corrige un cuestionario de una visita cerrada');
 select carmo_test.expect_fail($$update public.carmo_visits set record_state = 'draft' where visit_code = 'BASAL'$$, 'reabrir exige motivo');
 update public.carmo_visits set record_state = 'draft', reopen_reason = 'Corrección de la modalidad solicitada por monitorización' where visit_code = 'BASAL';
 select carmo_test.expect((select count(*) from public.carmo_visit_state_log) = 3, 'historial de estados: revisada, cerrada, reabierta');

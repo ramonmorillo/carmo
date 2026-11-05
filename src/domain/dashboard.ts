@@ -5,7 +5,7 @@ import { isOverdue } from './schedule';
 
 type P = { id: string; center_id: string; status: string; inclusion_date: string | null };
 type V = { id: string; patient_id: string; visit_code: string; status: string; planned_date: string | null };
-type A = { visit_id: string; patient_id: string; instrument_code: string; status: string; scores: { global: number | null; valid: boolean } | null };
+type A = { visit_id: string; patient_id: string; instrument_code: string; status: string; scores: { global?: number | null; valid?: boolean; vas?: number | null; adherent?: boolean | null } | null };
 type O = { id: string; supersedes_id: string | null; patient_id: string; visit_id: string | null; variable_code: string; value_numeric: number | null; unit: string | null; is_missing: boolean };
 
 export type Stat = { n: number; mean: number | null; median: number | null };
@@ -27,8 +27,15 @@ export function computeDashboard(input: { patients: P[]; visits: V[]; administra
   const visitOf = (pid: string, code: string) => input.visits.find((v) => v.patient_id === pid && v.visit_code === code && v.status === 'done');
   const iex = (visitId?: string) => {
     const a = visitId ? input.administrations.find((x) => x.visit_id === visitId && x.instrument_code === 'IEXPAC' && x.status === 'completed') : undefined;
-    return a?.scores?.valid ? a.scores.global : null;
+    return a?.scores?.valid && typeof a.scores.global === 'number' ? a.scores.global : null;
   };
+  const scoreOf = (visitId: string | undefined, code: string) =>
+    visitId ? input.administrations.find((x) => x.visit_id === visitId && x.instrument_code === code && x.status === 'completed')?.scores ?? null : null;
+  const adherence = (code: string) => {
+    const vals = included.map((p) => scoreOf(visitOf(p.id, code)?.id, 'MORISKY_GREEN')?.adherent).filter((x): x is boolean => typeof x === 'boolean');
+    return { adherent: vals.filter(Boolean).length, n: vals.length };
+  };
+  const vasAt = (code: string) => included.map((p) => scoreOf(visitOf(p.id, code)?.id, 'EQ5D3L')?.vas).filter((x): x is number => typeof x === 'number');
   const pairs = included.map((p) => pairIexpac(iex(visitOf(p.id, 'BASAL')?.id), iex(visitOf(p.id, 'FINAL')?.id)));
   const current = currentObservations(input.observations).filter((o) => o.variable_code === 'ldl_c' && !o.is_missing && o.value_numeric !== null);
   const ldlAt = (code: string, unit: string) =>
@@ -54,5 +61,9 @@ export function computeDashboard(input: { patients: P[]; visits: V[]; administra
     ldlBaselineMgdl: describe(ldlAt('BASAL', 'mg/dL')),
     ldlFinalMgdl: describe(ldlAt('FINAL', 'mg/dL')),
     interventions: input.interventions,
+    moriskyBaseline: adherence('BASAL'),
+    moriskyFinal: adherence('FINAL'),
+    eqVasBaseline: describe(vasAt('BASAL')),
+    eqVasFinal: describe(vasAt('FINAL')),
   };
 }

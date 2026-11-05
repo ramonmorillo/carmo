@@ -16,7 +16,7 @@ Plataforma de investigación (eCRD) del estudio **CARMO** (FEF-CARMO-2025): *Eva
 
 ## Arquitectura
 
-React 18 + TypeScript + Vite (SPA en GitHub Pages) sobre el **proyecto Supabase compartido** con DERMAPEX y COAMO: tablas `public.carmo_*` y esquema `carmo_private`, aislados por RLS y por autorización de aplicación (`app_access = 'carmo'`). Las migraciones de `supabase/migrations/` **no se aplican automáticamente**.
+React 18 + TypeScript + Vite (SPA en GitHub Pages) sobre el **proyecto Supabase compartido** con DERMAPEX y COAMO: tablas `public.carmo_*` y esquema `carmo_private`, aislados por RLS y por autorización de aplicación (`app_access = 'carmo'`). Las migraciones de `supabase/migrations/` se aplicaron en producción el 05/11/2026 con la aprobación del IP; los cambios futuros irán en migraciones nuevas. Nunca se aplican automáticamente.
 
 ## Desarrollo
 

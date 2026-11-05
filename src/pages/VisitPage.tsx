@@ -8,6 +8,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { SaveStatus } from '../components/ui/SaveStatus';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { correctionChain, currentObservations } from '../domain/observations';
+import { storedScoreLabel } from '../domain/questionnaires';
 import {
   patientCode, DATA_SOURCE_LABELS, MISSING_REASON_LABELS, MODALITY_LABELS, RECORD_STATE_LABELS, ROLE_CAN, TEMPORAL_CONTEXT_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS,
 } from '../domain/study';
@@ -122,7 +123,7 @@ function QuestionnaireLinks({ data }: { data: Data }) {
           const a = data.administrations.find((x) => x.visit_id === data.visit.id && x.instrument_code === i.code);
           return (
             <tr key={i.code}><td>{i.code}</td><td>{i.status === 'active' ? <StatusBadge tone="positive">Habilitado ({i.version})</StatusBadge> : <StatusBadge tone="warning">Pendiente de validación</StatusBadge>}</td>
-              <td>{i.status === 'active' ? <Link to={`/visits/${data.visit.id}/questionnaires/${i.code}`}>{a ? (a.status === 'completed' ? `Completado${a.scores?.valid ? ` · ${a.scores.global}` : ' · sin puntuación (incompleto)'}` : a.status === 'not_done' ? 'No realizado' : 'En curso') : 'Registrar'}</Link> : '—'}</td></tr>
+              <td>{i.status === 'active' ? <Link to={`/visits/${data.visit.id}/questionnaires/${i.code}`}>{a ? (a.status === 'completed' ? `Completado · ${storedScoreLabel(i.code, a.scores)}` : a.status === 'not_done' ? 'No realizado' : 'En curso') : 'Registrar'}</Link> : '—'}</td></tr>
           );
         })}
       </tbody></table>

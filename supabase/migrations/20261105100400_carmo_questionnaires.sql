@@ -3,8 +3,13 @@
 --   · IEXPAC (variable principal): 11 ítems 1-5; puntuación = 10 × (Σ11 − 11) / 44 (0-10), SOLO con
 --     los 11 ítems respondidos (fórmula indicada en el encargo, protocolo v3.0 — página por verificar).
 --     Sin imputación ni regla de puntuación condicional (no especificada).
---   · EQ-5D (3L/5L), EVASAF y Morisky-Green: registrados como PENDIENTES. No admiten
---     administraciones hasta verificar versión, licencia y regla de puntuación (RG-16 a RG-19).
+--   · EQ-5D-3L, EVASAF y Morisky-Green: definiciones REUTILIZADAS de COAMO (EQ-5D-3L, EVASAF) y
+--     DERMAPEX (Morisky-Green) por decisión del IP (05/11/2026). Sin índices ni totales no definidos:
+--       EQ-5D-3L: perfil de 5 dígitos (solo completo) + EVA 0-100; sin índice de utilidad.
+--       EVASAF: 10 ítems 1-5; sin total (ni protocolo ni documento lo definen; RG-17).
+--       Morisky-Green: 4 ítems sí(1)/no(0); adherente = P1 no, P2 sí, P3 no, P4 no (regla DERMAPEX,
+--       versión española); solo con los 4 ítems. Licencia por confirmar con el promotor (RG-40).
+--   · EQ-5D-5L: no utilizado (se adopta 3L).
 --   · Respuestas por ítem (códigos), sin texto de los instrumentos en el repositorio público.
 --   · La BD fija versión del instrumento, evaluador, rol del evaluador, puntuación y revisión.
 --   · Modificar una administración completada exige motivo; todo cambio queda en la auditoría.
@@ -27,10 +32,16 @@ insert into public.carmo_instruments (code, version, status, item_count, item_mi
   ('IEXPAC', 'IEXPAC-11', 'active', 11, 1, 5, false, 'carmo-iexpac-1', array['BASAL', 'FINAL'],
    'Protocolo v3.0, Objetivo primario: Siempre=5, Casi siempre=4, A veces=3, Casi nunca=2, Nunca=1; global = 10 × (Σ11 − 11) / 44',
    'Puntuación condicional (plataforma IEXPAC) citada pero no especificada: no implementada. Final: evaluador externo al equipo investigador.'),
-  ('EQ5D3L', 'pendiente', 'pending_specification', 5, 1, 3, true, null, array['BASAL', 'FINAL'], 'Protocolo v3.0: EuroQoL-5D, 5 dimensiones + EVA 0-100', 'El protocolo no indica 3L o 5L ni la tarifa: pendiente de versión y licencia EuroQol.'),
-  ('EQ5D5L', 'pendiente', 'pending_specification', 5, 1, 5, true, null, array['BASAL', 'FINAL'], 'Protocolo v3.0: EuroQoL-5D, 5 dimensiones + EVA 0-100', 'El protocolo no indica 3L o 5L ni la tarifa: pendiente de versión y licencia EuroQol.'),
-  ('EVASAF', 'pendiente', 'pending_specification', 1, 1, 5, false, null, array['BASAL', 'FINAL'], 'Protocolo v3.0: EVASAF (Farm Hosp 2015;39(3)), «ADJUNTO»', 'El documento adjunto no se ha aportado: número de ítems, escala y resultado pendientes de verificar.'),
-  ('MORISKY_GREEN', 'pendiente', 'pending_license', 4, 0, 1, false, null, array['BASAL', 'S24', 'FINAL'], 'Protocolo v3.0: test de Morisky-Green (%); valoración de adherencia en visita inicial, S24 y final', 'Versión, licencia y criterio de adherente pendientes.');
+  ('EQ5D3L', 'EQ-5D-3L-ES-ES', 'active', 5, 1, 3, true, 'carmo-eq5d3l-1', array['BASAL', 'FINAL'],
+   'Protocolo v3.0: EuroQoL-5D (5 dimensiones + EVA 0-100). Definición reutilizada de COAMO: versión España v2.0 autoadministrada / v1.0 entrevista',
+   'Dimensiones 1-5: movilidad, cuidado personal, actividades cotidianas, dolor/malestar, ansiedad/depresión; niveles 1-3. Modalidad solo autoadministrada o entrevista (fija la versión). Sin índice de utilidad. Registro de uso en EuroQol para CARMO pendiente (RG-16).'),
+  ('EQ5D5L', 'no utilizado', 'retired', 5, 1, 5, true, null, array['BASAL', 'FINAL'], 'Decisión del IP (05/11/2026): se adopta EQ-5D-3L', null),
+  ('EVASAF', 'EVASAF-FarmHosp2015-10it', 'active', 10, 1, 5, false, 'carmo-evasaf-1', array['BASAL', 'FINAL'],
+   'Protocolo v3.0: EVASAF (Farm Hosp 2015;39(3)). Definición reutilizada de COAMO: 10 ítems, 1 muy deficiente – 5 excelente',
+   'Sin puntuación total (no definida): resultado por ítem. Variable resumen para la comparación basal-final pendiente de decisión (RG-17).'),
+  ('MORISKY_GREEN', 'MG-4-ES', 'active', 4, 0, 1, false, 'carmo-mg-1', array['BASAL', 'S24', 'FINAL'],
+   'Protocolo v3.0: test de Morisky-Green (%), visitas inicial, S24 y final. Definición reutilizada de DERMAPEX (4 ítems sí/no)',
+   'P1 ¿olvida alguna vez? · P2 ¿toma la medicación a las horas indicadas? · P3 ¿deja de tomarla si se encuentra bien? · P4 ¿deja de tomarla si le sienta mal? Sí=1, No=0. Adherente: No, Sí, No, No. Verificar que el formulario en papel sigue este orden y redacción; licencia (RG-40).');
 
 create table public.carmo_questionnaire_administrations (
   id uuid primary key default gen_random_uuid(),
@@ -64,7 +75,7 @@ create table public.carmo_questionnaire_administrations (
 comment on table public.carmo_questionnaire_administrations is
   'Una administración por instrumento y visita (impide duplicados). responses = {"1": 1..5, ...}; clave ausente = ítem no respondido (nunca 0).';
 
--- Puntuación IEXPAC (reproducible; misma regla que src/domain/questionnaires/iexpac.ts).
+-- Puntuaciones (reproducibles; mismas reglas que src/domain/questionnaires.ts).
 create or replace function carmo_private.iexpac_score(p_responses jsonb)
 returns jsonb
 language plpgsql
@@ -86,6 +97,42 @@ begin
     return jsonb_build_object('items_answered', v_n, 'sum', null, 'global', null, 'valid', false);
   end if;
   return jsonb_build_object('items_answered', 11, 'sum', v_sum, 'global', round(10.0 * (v_sum - 11) / 44.0, 4), 'valid', true);
+end;
+$$;
+
+create or replace function carmo_private.questionnaire_scores(p_code text, p_responses jsonb, p_vas integer)
+returns jsonb
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v_profile text := '';
+  v_i integer;
+  v_n integer := 0;
+begin
+  case p_code
+    when 'IEXPAC' then
+      return carmo_private.iexpac_score(p_responses);
+    when 'EQ5D3L' then
+      for v_i in 1..5 loop
+        if p_responses ? v_i::text then v_profile := v_profile || (p_responses ->> v_i::text); v_n := v_n + 1; end if;
+      end loop;
+      return jsonb_build_object('items_answered', v_n, 'profile', case when v_n = 5 then v_profile end, 'vas', p_vas, 'valid', v_n = 5);
+    when 'EVASAF' then
+      select count(*) into v_n from jsonb_object_keys(p_responses);
+      return jsonb_build_object('items_answered', v_n, 'complete', v_n = 10);
+    when 'MORISKY_GREEN' then
+      select count(*) into v_n from jsonb_object_keys(p_responses);
+      if v_n < 4 then
+        return jsonb_build_object('items_answered', v_n, 'adherent', null, 'valid', false);
+      end if;
+      return jsonb_build_object('items_answered', 4, 'valid', true,
+        'adherent', (p_responses ->> '1')::integer = 0 and (p_responses ->> '2')::integer = 1
+                    and (p_responses ->> '3')::integer = 0 and (p_responses ->> '4')::integer = 0);
+    else
+      return null;
+  end case;
 end;
 $$;
 
@@ -141,6 +188,17 @@ begin
   perform carmo_private.assert_visit_open(new.visit_id);
   new.patient_id := v_visit.patient_id;
 
+  -- EQ-5D-3L: la versión depende de la modalidad (v2.0 autoadministrada / v1.0 entrevista).
+  if new.instrument_code = 'EQ5D3L' then
+    if new.administration_mode = 'assisted' then
+      raise exception 'EQ-5D-3L: modalidad autoadministrada o entrevista (versiones distintas); «con ayuda» no está prevista.';
+    end if;
+    new.instrument_version := case new.administration_mode
+      when 'self' then 'EQ-5D-3L-ES-ES-v2.0-self'
+      when 'interviewer' then 'EQ-5D-3L-ES-ES-v1.0-interviewer'
+      else 'EQ-5D-3L-ES-ES (modalidad no indicada)' end;
+  end if;
+
   if jsonb_typeof(new.responses) <> 'object' then raise exception 'Formato de respuestas no válido.'; end if;
   for v_key, v_val in select * from jsonb_each(new.responses) loop
     if v_key !~ '^[0-9]+$' or v_key::integer < 1 or v_key::integer > v_inst.item_count then
@@ -156,12 +214,12 @@ begin
   if new.status = 'not_done' and (v_n > 0 or new.vas_value is not null) then
     raise exception 'Un cuestionario no realizado no lleva respuestas.';
   end if;
-  if new.status = 'completed' and v_n = 0 then raise exception 'Un cuestionario completado necesita al menos una respuesta.'; end if;
+  if new.status = 'completed' and v_n = 0 and new.vas_value is null then raise exception 'Un cuestionario completado necesita al menos una respuesta.'; end if;
   if new.administration_date > current_date then raise exception 'Fecha futura no admitida.'; end if;
 
   new.items_answered := v_n;
-  if new.instrument_code = 'IEXPAC' and new.status = 'completed' then
-    new.scores := carmo_private.iexpac_score(new.responses);
+  if new.status = 'completed' and v_inst.scoring_version is not null then
+    new.scores := carmo_private.questionnaire_scores(new.instrument_code, new.responses, new.vas_value);
     new.scoring_version := v_inst.scoring_version;
   else
     new.scores := null;
@@ -187,7 +245,7 @@ for each row execute function carmo_private.write_audit_log();
 alter table public.carmo_instruments enable row level security;
 alter table public.carmo_questionnaire_administrations enable row level security;
 revoke all on public.carmo_instruments, public.carmo_questionnaire_administrations from public, anon, authenticated;
-revoke all on function carmo_private.iexpac_score(jsonb), carmo_private.enforce_questionnaire() from public, anon, authenticated;
+revoke all on function carmo_private.iexpac_score(jsonb), carmo_private.questionnaire_scores(text, jsonb, integer), carmo_private.enforce_questionnaire() from public, anon, authenticated;
 
 create policy carmo_app_gate on public.carmo_instruments as restrictive for all to authenticated
   using (app_private.has_app_access('carmo')) with check (app_private.has_app_access('carmo'));

@@ -32,8 +32,12 @@ export type Consent = { id: string; patient_id: string; document_version: string
 export type Instrument = { code: string; version: string; status: string; item_count: number; item_min: number; item_max: number; allowed_visits: string[]; notes: string | null };
 export type Administration = {
   id: string; visit_id: string; patient_id: string; instrument_code: string; instrument_version: string; status: string; not_done_reason: string | null;
-  administration_mode: string | null; data_source: string | null; administration_date: string | null; responses: Record<string, number>; items_answered: number;
-  scores: { global: number | null; sum: number | null; valid: boolean } | null; evaluator_role: string | null; evaluator_conformity: string | null; revision: number;
+  administration_mode: string | null; data_source: string | null; administration_date: string | null; responses: Record<string, number>; vas_value: number | null; items_answered: number;
+  scores: StoredScores | null; evaluator_role: string | null; evaluator_conformity: string | null; revision: number;
+};
+export type StoredScores = {
+  global?: number | null; sum?: number | null; valid?: boolean; profile?: string | null; vas?: number | null;
+  adherent?: boolean | null; complete?: boolean; items_answered?: number;
 };
 export type Treatment = {
   id: string; patient_id: string; active_ingredient: string; is_study_lipid_therapy: boolean; presentation: string | null; dose_amount: number | null; dose_unit: string | null;

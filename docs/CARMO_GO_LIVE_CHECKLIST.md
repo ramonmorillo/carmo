@@ -6,7 +6,7 @@ Ningún punto se da por cumplido sin evidencia (documento, acta o resultado de p
 
 - [ ] RG-01 Dictamen de la modificación que cubre el protocolo v3.0 y la HIP/CI v3.0 (el dictamen aportado cubre la v2.0 y la HIP/CI v1.0).
 - [ ] RG-31 Cobertura ética y conformidad o contrato de cada centro, antes de autorizarlo.
-- [ ] RG-33 Situación del reclutamiento: ¿hay pacientes ya incluidos en REDCap? Plan de migración o enmienda del calendario.
+- [x] RG-33 No hay pacientes incluidos (IP, 05/11/2026). - [ ] Enmienda del calendario del estudio.
 - [ ] RG-02 Sustitución de REDCap por CARMO valorada por el promotor; modificación o notificación al CEIm resuelta; HIP/CI coherente.
 - [ ] RG-03 Cambio en el equipo comunicado según el procedimiento.
 - [ ] RG-09 EIPD, base jurídica, contrato de encargo con Supabase e informe del DPD que cubran el proyecto compartido.
@@ -35,9 +35,10 @@ Ningún punto se da por cumplido sin evidencia (documento, acta o resultado de p
 
 ## C. Técnico
 
-- [ ] Aprobación explícita para aplicar las migraciones en producción (RG-25).
-- [ ] Copia de seguridad del proyecto antes de aplicarlas.
-- [ ] Aplicar en orden `supabase/migrations/2026110510*.sql`. Comprobar `get_advisors` (seguridad) y repetir la batería en una rama o copia.
+- [x] Aprobación de las migraciones en producción (RG-25), 05/11/2026.
+- [x] Migraciones 00-06 aplicadas y verificadas (asesor de seguridad, inventario de RLS y privilegios, recuentos de DERMAPEX y COAMO sin cambios).
+- [ ] Activar en Auth la protección frente a contraseñas filtradas (ajuste global; decisión compartida con DERMAPEX y COAMO).
+- [ ] Registro de uso de EQ-5D-3L en EuroQol para CARMO; licencia de Morisky-Green.
 - [ ] Cambio de una línea en `dermapex/db-tests/40_*` aprobado y fusionado (RG-26).
 - [ ] Prueba E2E en navegador contra un stack local (login, alta, inclusión, visita, IEXPAC, cierre, exportación) por cada rol.
 - [ ] Validación de la importación SPSS con PSPP (`scripts/validate-export-spss.py`).

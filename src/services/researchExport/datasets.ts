@@ -8,7 +8,7 @@ import { CMO_ENGINE_VERSION } from '../../domain/cmoEngine';
 import type { ColumnSpec, ColumnType, Dataset } from './spec';
 import type { TableRequest } from './reader';
 
-export const QUESTIONNAIRE_SCORING_VERSION = 'carmo-iexpac-1 (carmo_private.iexpac_score). EQ-5D, EVASAF y Morisky-Green: sin puntuación (instrumentos pendientes).';
+export const QUESTIONNAIRE_SCORING_VERSION = 'carmo-iexpac-1, carmo-eq5d3l-1 (perfil + EVA, sin índice), carmo-evasaf-1 (sin total), carmo-mg-1 (adherente = No-Sí-No-No) · carmo_private.questionnaire_scores';
 export const STRATIFICATION_SCORING_VERSION = `${CMO_ENGINE_VERSION} · modelo CMO cardiovascular NO validado: estratificación desactivada.`;
 
 type Row = Record<string, unknown>;
@@ -56,7 +56,7 @@ const RAW_TABLES = {
     ['id', 'string', 'Id'], ['visit_id', 'string', 'Visita (id)'], ['patient_id', 'string', 'Paciente (id)'], ['instrument_code', 'string', 'Instrumento'],
     ['instrument_version', 'string', 'Versión del instrumento'], ['status', 'string', 'Estado'], ['not_done_reason', 'string', 'Motivo de no realización'],
     ['administration_mode', 'string', 'Modalidad'], ['data_source', 'string', 'Soporte'], ['administration_date', 'date', 'Fecha'],
-    ['responses', 'json', 'Respuestas (original)'], ['items_answered', 'integer', 'Ítems respondidos'], ['scores', 'json', 'Puntuaciones (BD)'],
+    ['responses', 'json', 'Respuestas (original)'], ['vas_value', 'integer', 'EVA 0-100 (EQ-5D)'], ['items_answered', 'integer', 'Ítems respondidos'], ['scores', 'json', 'Puntuaciones (BD)'],
     ['scoring_version', 'string', 'Versión de puntuación'], ['evaluator_role', 'string', 'Rol del evaluador'],
     ['evaluator_conformity', 'string', 'Evaluador conforme con el protocolo (IEXPAC final externo)'], ['revision', 'integer', 'Revisión'],
   ] as RawCol[] },
@@ -139,12 +139,16 @@ export function buildDatasets(raw: RawData, todayIso: string): BuildResult {
     const o = currentObs.find((x) => x.patient_id === patientId && x.visit_id === visitId && x.variable_code === variable && !x.is_missing);
     return o ? { value: (o.value_numeric as number | null) ?? null, unit: (o.unit as string | null) ?? null } : undefined;
   };
+  const scoresAt = (visitId: string | undefined, code: string) => {
+    if (!visitId) return undefined;
+    const q = raw.questionnaires.find((x) => x.visit_id === visitId && x.instrument_code === code && x.status === 'completed');
+    return q?.scores as { global?: number | null; profile?: string | null; vas?: number | null; adherent?: boolean | null } | undefined;
+  };
   const iexpacAt = (visitId: string | undefined) => {
-    if (!visitId) return null;
-    const q = raw.questionnaires.find((x) => x.visit_id === visitId && x.instrument_code === 'IEXPAC' && x.status === 'completed');
-    const g = (q?.scores as { global?: number | null } | undefined)?.global;
+    const g = scoresAt(visitId, 'IEXPAC')?.global;
     return typeof g === 'number' ? g : null;
   };
+  const treatmentsOf = (pid: string) => raw.treatments.filter((t) => t.patient_id === pid && t.is_study_lipid_therapy === true);
 
   const patientRows: Row[] = [];
   const longRows: Row[] = [];
@@ -174,6 +178,20 @@ export function buildDatasets(raw: RawData, todayIso: string): BuildResult {
       if (ch.reason === 'unit_mismatch') {
         issues.push({ tipo: 'unidades_distintas', gravedad: 'revisar', tabla: 'carmo_observations', registro_id: pid, study_code: String(p.study_code), detalle: `${v}: unidad basal y final distintas; no se calcula el cambio (sin conversión automática).` });
       }
+    }
+    const eqB = scoresAt(basal?.id as string | undefined, 'EQ5D3L');
+    const eqF = scoresAt(final?.id as string | undefined, 'EQ5D3L');
+    row.eq5d_perfil_basal = eqB?.profile ?? null; row.eq5d_perfil_final = eqF?.profile ?? null;
+    row.eq5d_eva_basal = eqB?.vas ?? null; row.eq5d_eva_final = eqF?.vas ?? null;
+    row.eq5d_eva_dif = typeof eqB?.vas === 'number' && typeof eqF?.vas === 'number' ? eqF.vas - eqB.vas : null;
+    const mg = (v: Row | undefined) => { const a = scoresAt(v?.id as string | undefined, 'MORISKY_GREEN')?.adherent; return typeof a === 'boolean' ? a : null; };
+    row.mg_adherente_basal = mg(basal); row.mg_adherente_s24 = mg(visitOf(pid, 'S24')); row.mg_adherente_final = mg(final);
+    const trts = treatmentsOf(pid);
+    const naiveDerived = trts.length === 0 ? null : trts.every((t) => t.started_before_inclusion === false);
+    row.naive_derivado = naiveDerived;
+    const naiveObs = currentObs.find((o) => o.patient_id === pid && o.variable_code === 'naive_patient' && !o.is_missing);
+    if (naiveObs && naiveDerived !== null && naiveObs.value_boolean !== naiveDerived) {
+      issues.push({ tipo: 'naive_discordante', gravedad: 'revisar', tabla: 'carmo_observations', registro_id: pid, study_code: String(p.study_code), detalle: 'La variable «paciente naïve» no coincide con el registro de tratamientos (inicio del medicamento del estudio respecto a la inclusión).' });
     }
     row.imc_basal = deriveBmi(obsAt(pid, basal?.id as string | undefined, 'weight'), obsAt(pid, basal?.id as string | undefined, 'height'));
     row.imc_final = deriveBmi(obsAt(pid, final?.id as string | undefined, 'weight'), obsAt(pid, final?.id as string | undefined, 'height'));
@@ -225,6 +243,15 @@ export function buildDatasets(raw: RawData, todayIso: string): BuildResult {
     );
   }
   longCols.push(
+    c('eq5d_perfil_basal', 'string', 'EQ-5D-3L perfil basal (5 dígitos)', 'carmo_questionnaire_administrations.scores.profile', { instrument: 'EQ5D3L', visit: 'BASAL' }),
+    c('eq5d_perfil_final', 'string', 'EQ-5D-3L perfil final', 'carmo_questionnaire_administrations.scores.profile', { instrument: 'EQ5D3L', visit: 'FINAL' }),
+    c('eq5d_eva_basal', 'integer', 'EQ-5D EVA basal (0-100)', 'carmo_questionnaire_administrations.vas_value', { instrument: 'EQ5D3L', visit: 'BASAL' }),
+    c('eq5d_eva_final', 'integer', 'EQ-5D EVA final (0-100)', 'carmo_questionnaire_administrations.vas_value', { instrument: 'EQ5D3L', visit: 'FINAL' }),
+    c('eq5d_eva_dif', 'integer', 'EQ-5D EVA final − basal', 'derivada', { rule: 'solo con ambas EVA' }),
+    c('mg_adherente_basal', 'boolean', 'Morisky-Green adherente (basal)', 'scores.adherent', { instrument: 'MORISKY_GREEN', visit: 'BASAL', rule: 'No-Sí-No-No; vacío si incompleto' }),
+    c('mg_adherente_s24', 'boolean', 'Morisky-Green adherente (S24)', 'scores.adherent', { instrument: 'MORISKY_GREEN', visit: 'S24' }),
+    c('mg_adherente_final', 'boolean', 'Morisky-Green adherente (final)', 'scores.adherent', { instrument: 'MORISKY_GREEN', visit: 'FINAL' }),
+    c('naive_derivado', 'boolean', 'Nuevo a tratamiento según el registro de tratamientos', 'derivada', { rule: 'todos los medicamentos del estudio iniciados en o después de la inclusión; vacío sin tratamiento del estudio registrado' }),
     c('imc_basal', 'decimal', 'IMC basal (kg/m²)', 'derivada', { rule: 'peso (kg) / (talla (cm)/100)²', unit: 'kg/m2' }),
     c('imc_final', 'decimal', 'IMC final (kg/m²)', 'derivada', { rule: 'peso (kg) / (talla (cm)/100)²', unit: 'kg/m2' }),
   );
