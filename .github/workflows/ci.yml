@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Tests
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  # Migraciones CARMO sobre el historial canónico del proyecto Supabase compartido (ramonmorillo/dermapex),
+  # baterías de no regresión de DERMAPEX/COAMO y batería de seguridad/integridad de CARMO, en PostgreSQL efímero.
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: carmo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/carmo_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout canonical migrations (ramonmorillo/dermapex, solo lectura)
+        uses: actions/checkout@v4
+        with:
+          repository: ramonmorillo/dermapex
+          ref: main
+          path: canonical-db
+      - name: Install psql
+        run: sudo apt-get update -q && sudo apt-get install -y -q postgresql-client
+      - name: Migrations, non-regression and CARMO security tests
+        env:
+          CANONICAL_DIR: canonical-db
+        run: bash scripts/test-db.sh
