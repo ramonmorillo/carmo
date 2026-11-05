@@ -1,6 +1,6 @@
 # CARMO · Modelo de estratificación CMO cardiovascular
 
-Versión del modelo en CARMO: **CMO-CV-SEFH-2024** · migración `20261105200000_carmo_cmo_cardio_model.sql`, **aplicada en producción el 05/11/2026** (SHA-256 de la definición `7fa318fe…080d4`; el caso 5 da 17/P2 calculado en la BD de producción) · estado: **borrador** (draft) hasta la confirmación del §4.
+Versión del modelo en CARMO: **CMO-CV-SEFH-2024** · migración `20261105200000_carmo_cmo_cardio_model.sql`, **aplicada en producción el 05/11/2026** (SHA-256 de la definición `7fa318fe…080d4`; el caso 5 da 17/P2 calculado en la BD de producción) · estado: **validado el 05/11/2026** por el IP (R. A. Morillo Verdugo), que confirma las 8 decisiones del §4. Cambio registrado en `carmo_audit_log` (draft → validated).
 
 **Fuente:** «Adaptación del Modelo de Atención Farmacéutica CMO en el Paciente con Patologías Cardiovasculares» (MAPEX-SEFH), versión Markdown aportada por el IP el 05/11/2026. Apartados utilizados:
 
@@ -63,7 +63,7 @@ Puntos de corte: **P1 ≥ 23 · P2 ≥ 17 · P3 < 17**; máximo **42**.
 
 Interpretación: los casos 1 y 2 parecen corresponder a una versión anterior del modelo. Conviene comunicarlo a MAPEX-SEFH.
 
-## 4. Decisiones de interpretación: requieren confirmación del IP antes de validar el modelo
+## 4. Decisiones de interpretación (confirmadas por el IP el 05/11/2026)
 
 1. **Las filas de la Tabla 2 suman por separado**: comorbilidad CV (2), IC + cardiopatía isquémica (3) e IC + FA (3); también FEVI < 40 % (1) y TEV (1). Es la única lectura compatible con el máximo clínico de 20 declarado y con el máximo total de 42.
 2. **Puntos de corte inclusivos**: 17 → P2 y 23 → P1, como confirma el caso 5.
@@ -80,7 +80,7 @@ Interpretación: los casos 1 y 2 parecen corresponder a una versión anterior de
    - Las Tablas 5-7 se han transcrito de forma resumida, eliminando una actuación duplicada en la Tabla 6.
    - Se añaden dos entradas que no están en esas tablas, pero sí en el protocolo y en los módulos del modelo: MOT01 (entrevista motivacional) y OPO01 (seguimiento a distancia / teleconsulta).
 
-## 5. Activación (tras confirmar §4)
+## 5. Activación (ejecutada el 05/11/2026)
 
 ```sql
 update public.carmo_cmo_models
@@ -88,4 +88,4 @@ update public.carmo_cmo_models
  where version = 'CMO-CV-SEFH-2024';
 ```
 
-Hasta entonces la aplicación previsualiza el cálculo, pero no guarda estratificaciones. Cualquier cambio posterior del modelo será una **versión nueva** (otra fila en `carmo_cmo_models`); las estratificaciones guardadas conservan su versión.
+Cualquier cambio posterior del modelo será una **versión nueva** (otra fila en `carmo_cmo_models`); las estratificaciones guardadas conservan su versión.
