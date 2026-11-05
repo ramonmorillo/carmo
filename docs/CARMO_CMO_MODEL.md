@@ -1,6 +1,6 @@
 # CARMO · Modelo de estratificación CMO cardiovascular
 
-Versión del modelo en CARMO: **CMO-CV-SEFH-2024** · migración `20261105200000_carmo_cmo_cardio_model.sql` · estado inicial: **borrador** (draft).
+Versión del modelo en CARMO: **CMO-CV-SEFH-2024** · migración `20261105200000_carmo_cmo_cardio_model.sql`, **aplicada en producción el 05/11/2026** (SHA-256 de la definición `7fa318fe…080d4`; el caso 5 da 17/P2 calculado en la BD de producción) · estado: **borrador** (draft) hasta la confirmación del §4.
 
 **Fuente:** «Adaptación del Modelo de Atención Farmacéutica CMO en el Paciente con Patologías Cardiovasculares» (MAPEX-SEFH), versión Markdown aportada por el IP el 05/11/2026. Apartados utilizados:
 
