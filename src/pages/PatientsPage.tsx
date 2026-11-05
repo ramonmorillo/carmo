@@ -35,7 +35,8 @@ export function PatientsPage() {
     await save.run(
       () => carmoWrite.insert<Patient>('carmo_patients', {
         center_id: target, screening_date: screeningDate,
-        responsible_investigator_id: session.role === 'site_pi' || session.role === 'site_investigator' ? session.userId : null,
+        responsible_investigator_id: session.role === 'site_pi' || session.role === 'site_investigator'
+          || (session.role === 'coordinator' && session.memberships.some((m) => m.center_id === target)) ? session.userId : null,
       }),
       (rows) => navigate(`/patients/${rows[0].id}`),
     );

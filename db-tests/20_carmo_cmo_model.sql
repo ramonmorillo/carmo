@@ -79,4 +79,22 @@ select carmo_test.as_user('ca000000-0000-4000-8000-000000000004');
 select carmo_test.expect((select count(*) from public.carmo_stratifications) = 0 and (select count(*) from public.carmo_interventions) = 0, 'otro centro no ve estratificaciones ni intervenciones');
 commit;
 
+-- Migración 08: la coordinación puede ser investigador del consentimiento solo en un centro al que pertenece.
+begin;
+select carmo_test.as_user('ca000000-0000-4000-8000-000000000001');
+insert into public.carmo_patients (center_id, responsible_investigator_id)
+  select id, 'ca000000-0000-4000-8000-000000000001' from public.carmo_centers where code = 'CB';
+select carmo_test.expect_fail($$insert into public.carmo_consents (patient_id, document_version, signed_date, investigator_id)
+  select id, 'HIP/CI ficticio v1', current_date, 'ca000000-0000-4000-8000-000000000001' from public.carmo_patients where screening_code = 'SEL-002-002'$$,
+  'la coordinación sin pertenencia al centro no puede ser investigador del consentimiento');
+commit;
+select carmo_private.assign_center('coord@carmo.test', 'CB');
+begin;
+select carmo_test.as_user('ca000000-0000-4000-8000-000000000001');
+insert into public.carmo_consents (patient_id, document_version, signed_date, investigator_id)
+  select id, 'HIP/CI ficticio v1', current_date, 'ca000000-0000-4000-8000-000000000001' from public.carmo_patients where screening_code = 'SEL-002-002';
+select carmo_test.expect((select count(*) from public.carmo_consents c join public.carmo_patients p on p.id = c.patient_id where p.screening_code = 'SEL-002-002') = 1,
+  'la coordinación que pertenece al centro sí puede ser investigador del consentimiento');
+commit;
+
 \echo 'CARMO · batería 20 (modelo CMO) superada'

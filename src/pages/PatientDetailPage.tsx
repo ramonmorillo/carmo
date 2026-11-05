@@ -110,7 +110,9 @@ function InclusionSection({ data, session, reload }: { data: Data; session: Carm
   };
   const include = () => void save.run(() => carmoWrite.update('carmo_patients', { status: 'included' }, { id: data.patient.id }), reload);
   const reject = () => void save.run(() => carmoWrite.update('carmo_patients', { status: 'not_included', status_reason: notIncluded }, { id: data.patient.id }), reload);
-  const investigators = data.profiles.filter((p) => p.role === 'site_pi' || p.role === 'site_investigator');
+  // Investigadores del centro; la coordinación solo si pertenece al centro (migración 08).
+  const investigators = data.profiles.filter((p) => p.role === 'site_pi' || p.role === 'site_investigator'
+    || (p.role === 'coordinator' && p.id === session.userId && session.memberships.some((m) => m.center_id === data.patient.center_id)));
 
   return (
     <section className="card">

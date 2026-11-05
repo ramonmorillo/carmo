@@ -1,7 +1,7 @@
 name: Deploy GitHub Pages
 
-# SOLO MANUAL hasta completar docs/CARMO_GO_LIVE_CHECKLIST.md: la herramienta no está habilitada para
-# datos reales. Pasar a despliegue automático en main solo tras la validación.
+# SOLO MANUAL (decisión del IP 05/11/2026: despliegue para validación con datos sintéticos en el centro de
+# prueba). Sin datos reales hasta completar docs/CARMO_GO_LIVE_CHECKLIST.md.
 on:
   workflow_dispatch:
 
@@ -20,6 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -28,8 +30,10 @@ jobs:
       - run: npx tsc -b && npm test
       - name: Build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # Valores PÚBLICOS (clave anon, no service-role): viajan igualmente en el JavaScript del navegador;
+          # la protección real es la RLS. Los secretos del repositorio, si existen, tienen prioridad.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://efjpjponblmdjlhmmiet.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmanBqcG9uYmxtZGpsaG1taWV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExMjc1NTcsImV4cCI6MjEwNjcwMzU1N30.B4vWbedSpg8p0Y3e6NifTuUO0IGzVBf1Y3-dNyxWbdQ' }}
           CARMO_BASE_PATH: ${{ vars.CARMO_BASE_PATH || '/carmo/' }}
         run: npm run build
       - uses: actions/upload-pages-artifact@v3
