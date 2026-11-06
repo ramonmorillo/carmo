@@ -56,7 +56,7 @@ Los documentos originales no se versionan en el repositorio porque es público y
 | RG-20 | Adherencia por dispensaciones | Método, ventana y umbral no especificados. Se registran las dispensaciones; no se calcula nada |
 | RG-21 | Modelo CMO cardiovascular | **Recibido (05/11/2026) e implementado** como `CMO-CV-SEFH-2024` (migración 07), **validado por el IP el 05/11/2026** tras confirmar las 8 decisiones de interpretación (docs/CARMO_CMO_MODEL.md §4). Los casos clínicos 4 y 5 se reproducen exactamente; los casos 1 y 2 del documento contradicen sus propias tablas |
 | RG-22 | Taxonomía de intervenciones | **Implementada**: Tablas 5-7 (27 actuaciones acumulativas por prioridad) + entrevista motivacional y seguimiento a distancia (2, procedentes del protocolo y de los módulos del modelo). Registro de intervenciones habilitado |
-| RG-15 | Problemas relacionados con medicamentos | No los define el protocolo |
+| RG-15 | Problemas relacionados con medicamentos | No los define el protocolo. **Cerrado el 06/11/2026: el IP decide retirar el apartado de la herramienta** (migración 09: sin escritura; columnas conservadas por no ser destructivos) |
 
 ## D. Protección de datos
 
@@ -89,7 +89,8 @@ Hacer privado el **repositorio de GitHub** no depende de Supabase ni exige Supab
 | ¿Hay pacientes incluidos? | No | Sin migración. Calendario a enmendar (RG-33) |
 | ¿Dictamen de modificación a la v3.0? | No | Solo **CHUAC y CHUS** cuentan con cobertura ética documentada (v2.0, HIP/CI v1.0). La coordinadora que figura en el dictamen ya no participa: CHUAC necesita un nuevo IP y la coordinación debe notificarse. **Recomendación:** presentar al CEIm-G una única modificación relevante que agrupe la v3.0 (centros y co-coordinación), el cambio de coordinación, la sustitución de REDCap por CARMO, el nuevo calendario, la aclaración sobre el evaluador del IEXPAC y la elección de instrumentos (EQ-5D-3L, versión de Morisky-Green) |
 | Visita final | 12 meses ±28 días | Calendario CARMO-CAL-0.2 (RG-05) |
-| Cuestionarios | Reutilizar los de otros proyectos | EQ-5D-3L y EVASAF (de COAMO), Morisky-Green (de DERMAPEX) habilitados (RG-16, 17, 40) |
+| Cuestionarios | Reutilizar los de otros proyectos | EQ-5D-3L y EVASAF (de COAMO), Morisky-Green (de DERMAPEX) habilitados (RG-16, 17, 40). EQ-5D-5L retirado: no se muestra (06/11/2026) |
+| Medicación (06/11/2026) | Registro vinculado a CIMA, sin texto libre, y organización por visita como IRIS | Migración 09 y Edge Function `carmo-search-cima` (solo cuentas CARMO). Revisión de la medicación obligatoria en cada visita programada |
 | Paciente naïve | Paciente nuevo a tratamiento | RG-39 |
 | Aprobación de producción | Aprobado | **Las 7 migraciones están aplicadas** en el proyecto Supabase compartido (versiones `20261105133925` a `20261105134533`, una por cada fichero `2026110510000x` del repositorio, en el mismo orden). Verificado tras la aplicación: 26 tablas `carmo_*` con RLS y barrera restrictiva, `anon` sin privilegios, sin DELETE para `authenticated`, 14 centros inactivos, modo `validation`; recuentos de DERMAPEX y COAMO sin cambios |
 

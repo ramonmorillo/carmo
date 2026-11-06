@@ -366,19 +366,48 @@ commit;
 
 begin;
 select carmo_test.as_user('ca000000-0000-4000-8000-000000000003');
-insert into public.carmo_treatments (patient_id, active_ingredient, dose_amount, dose_unit, frequency, route, start_date)
-  select id, 'Evolocumab', 140, 'mg', 'cada 2 semanas', 'subcutaneous', current_date - 30 from public.carmo_patients where screening_code = 'SEL-001-002';
+select carmo_test.expect_fail($$insert into public.carmo_treatments (patient_id, active_ingredient, dose_amount, dose_unit, frequency, route, start_date)
+  select id, 'Atorvastatina', 40, 'mg', 'cada 24 horas', 'oral', current_date - 30 from public.carmo_patients where screening_code = 'SEL-001-002'$$,
+  'medicación en texto libre (sin CIMA) rechazada');
+select carmo_test.expect_fail($$insert into public.carmo_treatments (patient_id, active_ingredient, cima_nregistro, cima_name, dose_amount, dose_unit, frequency_code, route, start_date)
+  select id, 'Evolocumab', '115016001', 'Repatha 140 mg solución inyectable en pluma precargada', 140, 'miligramos', 'q2w', 'subcutaneous', current_date - 30 from public.carmo_patients where screening_code = 'SEL-001-002'$$,
+  'unidad de dosis fuera de la lista rechazada');
+select carmo_test.expect_fail($$insert into public.carmo_treatments (patient_id, active_ingredient, cima_nregistro, cima_name, dose_amount, dose_unit, frequency_code, route, start_date)
+  select id, 'Evolocumab', '115016001', 'Repatha 140 mg solución inyectable en pluma precargada', 140, 'mg', 'cada quince días', 'subcutaneous', current_date - 30 from public.carmo_patients where screening_code = 'SEL-001-002'$$,
+  'pauta fuera de la lista rechazada');
+select carmo_test.expect((select count(*) from public.carmo_visit_medication_reviews) = 0, 'sin revisiones de medicación al inicio');
+select carmo_test.expect_fail($$insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_changes' from public.carmo_visits where visit_code = 'BASAL'$$,
+  'revisión «sin cambios» rechazada si no hay medicación registrada');
+insert into public.carmo_treatments (patient_id, active_ingredient, cima_nregistro, cima_name, atc_code, dose_amount, dose_unit, frequency_code, route, start_date, visit_id)
+  select p.id, 'Evolocumab', '115016001', 'Repatha 140 mg solución inyectable en pluma precargada', 'C10AX13', 140, 'mg', 'q2w', 'subcutaneous', current_date - 30, v.id
+    from public.carmo_patients p join public.carmo_visits v on v.patient_id = p.id and v.visit_code = 'BASAL' where p.screening_code = 'SEL-001-002';
+select carmo_test.expect((select frequency = 'Cada 2 semanas' and presentation = cima_name from public.carmo_treatments), 'la BD rellena la etiqueta de la pauta y la presentación desde CIMA');
+select carmo_test.expect((select visit_id is not null from public.carmo_treatment_events where event_type = 'start'), 'el inicio queda vinculado a la visita');
+select carmo_test.expect_fail($$insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_medication' from public.carmo_visits where visit_code = 'BASAL'$$,
+  'no se marca «sin medicación» con medicación activa');
+insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_changes' from public.carmo_visits where visit_code = 'BASAL';
+select carmo_test.expect((select active_medication_count = 1 and revision = 1 and reviewed_by is not null from public.carmo_visit_medication_reviews), 'revisión de la visita con recuento calculado por la BD');
+select carmo_test.expect_fail($$update public.carmo_visit_medication_reviews set outcome = 'changes_recorded', revision = 1$$, 'modificar la revisión exige motivo');
+update public.carmo_visit_medication_reviews set outcome = 'changes_recorded', revision = 1, correction_reason = 'Se registra el cambio de pauta';
+select carmo_test.expect((select revision = 2 from public.carmo_visit_medication_reviews), 'revisión corregida con motivo (revisión 2)');
+select carmo_test.expect_fail($$update public.carmo_visit_medication_reviews set outcome = 'no_changes', revision = 1, correction_reason = 'Conflicto simulado'$$, 'concurrencia: revisión obsoleta rechazada');
+select carmo_test.expect_fail($$delete from public.carmo_visit_medication_reviews$$, 'una revisión de medicación no se borra');
 select carmo_test.expect((select is_study_lipid_therapy and started_before_inclusion from public.carmo_treatments), 'evolocumab reconocido como tratamiento principal iniciado antes de la inclusión');
 select carmo_test.expect((select count(*) from public.carmo_treatment_events where event_type = 'start') = 1, 'evento de inicio creado automáticamente');
 select carmo_test.expect_fail($$update public.carmo_treatments set dose_amount = 420$$, 'un tratamiento no se edita directamente');
 select carmo_test.expect_fail($$insert into public.carmo_treatment_events (treatment_id, event_type, event_date, new_dose_amount) select id, 'dose_change', current_date, 420 from public.carmo_treatments$$, 'cambio de dosis sin motivo rechazado');
-insert into public.carmo_treatment_events (treatment_id, event_type, event_date, new_dose_amount, new_frequency, reason)
-  select id, 'dose_change', current_date, 420, 'mensual', 'Cambio de pauta por preferencia del paciente' from public.carmo_treatments;
+select carmo_test.expect_fail($$insert into public.carmo_treatment_events (treatment_id, event_type, event_date, new_dose_amount, new_frequency_code, reason)
+  select id, 'dose_change', current_date, 420, 'quincenal', 'Cambio de pauta' from public.carmo_treatments$$, 'cambio a una pauta fuera de la lista rechazado');
+insert into public.carmo_treatment_events (treatment_id, event_type, event_date, new_dose_amount, new_frequency_code, reason)
+  select id, 'dose_change', current_date, 420, 'monthly', 'Cambio de pauta por preferencia del paciente' from public.carmo_treatments;
+select carmo_test.expect((select frequency_code = 'monthly' and frequency = 'Mensual' from public.carmo_treatments), 'el cambio de pauta actualiza código y etiqueta');
 insert into public.carmo_treatment_events (treatment_id, event_type, event_date, reason) select id, 'suspension', current_date, 'Reacción local' from public.carmo_treatments;
 select carmo_test.expect((select status = 'suspended' and dose_amount = 420 from public.carmo_treatments), 'eventos aplicados: dosis 420 mg y suspendido');
 insert into public.carmo_treatment_events (treatment_id, event_type, event_date, reason) select id, 'end', current_date, 'Fin por decisión clínica' from public.carmo_treatments;
 select carmo_test.expect((select status = 'finished' and end_date = current_date from public.carmo_treatments) and (select count(*) from public.carmo_treatment_events) = 4,
   'tratamiento finalizado conserva todo su historial (4 eventos)');
+select carmo_test.expect_fail($$insert into public.carmo_visit_evolutions (visit_id, clinical_evolution, drp_identified) select id, 'Evolución', true from public.carmo_visits where visit_code = 'BASAL'$$,
+  'el PRM se ha retirado: no admite escritura');
 select carmo_test.expect_fail($$delete from public.carmo_treatments$$, 'G8: un tratamiento no se borra');
 commit;
 

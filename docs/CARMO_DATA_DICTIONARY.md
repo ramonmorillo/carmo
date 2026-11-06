@@ -88,8 +88,11 @@ Cada observación lleva: valor tipado, unidad, `observed_date`, `data_source`, `
 
 | Variable | Tabla.columna | Estado |
 |---|---|---|
-| Medicamento de uso hospitalario del estudio (alirocumab, evolocumab, inclisirán, evinacumab) o concomitante | `carmo_treatments.active_ingredient`, `is_study_lipid_therapy` | IMPL |
-| Presentación, posología, vía, inicio, fin, estado | Columnas homónimas (actualizadas por eventos) | IMPL |
+| Medicamento seleccionado en CIMA (AEMPS), sin texto libre (migración 09, 06/11/2026) | `carmo_treatments.cima_nregistro`, `cima_cn`, `cima_name`, `atc_code`, `pharmaceutical_form`, `cima_snapshot` | IMPL |
+| Medicamento de uso hospitalario del estudio (alirocumab, evolocumab, inclisirán, evinacumab) o concomitante | `carmo_treatments.active_ingredient` (derivado de CIMA), `is_study_lipid_therapy` | IMPL |
+| Dosis (unidad de lista cerrada), pauta codificada, vía (de las autorizadas en CIMA), inicio, fin, estado | `dose_amount`, `dose_unit`, `frequency_code` (+ `frequency` como etiqueta), `route`, `start_date`, `end_date`, `status` (actualizados por eventos) | IMPL |
+| Visita en la que se registra el medicamento | `carmo_treatments.visit_id`; el evento de inicio hereda la visita | IMPL |
+| Revisión de la medicación en cada visita (sin cambios / con cambios / sin medicación) | `carmo_visit_medication_reviews` (una por visita; recuento de vigentes calculado por la BD) | IMPL |
 | Modificaciones, motivo, incidencias, RAM | `carmo_treatment_events` | IMPL |
 | Revisión de la historia farmacoterapéutica (BASAL, FINAL) | Evolución de la visita (`pharmacotherapy_update`) | IMPL |
 | Registro de dispensaciones | `carmo_dispensations` | IMPL |

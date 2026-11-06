@@ -1,6 +1,6 @@
 # CARMO · Matriz de trazabilidad entre protocolo, formulario, BD, validación, exportación y prueba
 
-Versión 0.2 · 05/11/2026. «§» remite al encargo de desarrollo; «Protocolo» remite al protocolo v3.0 (índice de páginas). La versión aprobada es la v2.0 (RG-01). Las pruebas citadas son:
+Versión 0.3 · 06/11/2026. «§» remite al encargo de desarrollo; «Protocolo» remite al protocolo v3.0 (índice de páginas). La versión aprobada es la v2.0 (RG-01). Las pruebas citadas son:
 
 - `db-tests/10_carmo_security_integrity.sql` (**DB**): PostgreSQL real con RLS;
 - `tests/*.test.ts` (**UT**): Vitest.
@@ -27,7 +27,11 @@ Versión 0.2 · 05/11/2026. «§» remite al encargo de desarrollo; «Protocolo�
 | §6 Evaluador externo | Rol `external_evaluator` | `evaluator_id`, `evaluator_role` | Fijados por la BD; sin acceso clínico | `evaluator_role` | DB evaluador |
 | §7 Variables CV con fecha, unidad, valor, origen y contexto | Visita → Variables clínicas | `carmo_observations` | Tipo, unidad, rango, contexto, antecedente o incidente | raw/carmo_observations | DB G1, unidad, rango, incidente |
 | §7 Variaciones longitudinales | — | derivada | Sin convertir unidades | `*_dif`, `imc_*` | UT `numericChange`, `deriveBmi`; UT export |
-| §8 Tratamientos e historial | Ficha → Tratamiento | `carmo_treatments`, `carmo_treatment_events` | Sin edición directa; motivo; transiciones válidas | raw | DB tratamientos |
+| §8 Tratamientos e historial | Ficha → Medicación; Visita → Medicación | `carmo_treatments`, `carmo_treatment_events` | Sin edición directa; motivo; transiciones válidas | raw | DB tratamientos |
+| §8 Medicación desde CIMA, sin texto libre (decisión del IP, 06/11/2026) | Visita → Medicación → Añadir desde CIMA | `carmo_treatments.cima_*`, `frequency_code`, `dose_unit`, `route` | CIMA obligatorio; unidad, pauta y vía de listas cerradas (`frequency_label`, `dose_unit_allowed`) | raw/carmo_treatments | DB «texto libre rechazada», «unidad…», «pauta…»; UT `medication.test.ts` (listas idénticas a la BD), `cimaMapping.test.ts` |
+| Revisión de la medicación en cada visita | Visita → Medicación → Revisión | `carmo_visit_medication_reviews` | Coherencia con la medicación vigente; motivo y revisión para corregir; sin borrado | raw/carmo_visit_medication_reviews | DB «revisión…»; UT `pending.test.ts` |
+| Organización por visita (como IRIS): lo necesario en cada visita | Visita → «Lo necesario en esta visita» y pestañas; Ficha → Longitudinalidad de visitas | derivada (`visitRequirements`) | Aviso y confirmación al cerrar con bloques pendientes | — | UT `visitRequirements.test.ts` |
+| PRM retirado (RG-15) | — | `carmo_visit_evolutions.drp_*` | Sin privilegios de escritura; restricción `carmo_evo_drp_retired` | No se exporta | DB «el PRM se ha retirado» |
 | §8 Dispensaciones | Ficha → Tratamiento | `carmo_dispensations` | Correcciones por sustitución | raw | — (pendiente RG-20) |
 | §9 / protocolo: número y tipo de intervenciones (programadas o no; presenciales o telemáticas) según la taxonomía del modelo | Intervenciones | `carmo_interventions`, `carmo_intervention_catalog` | Solo catálogo validado; filtro acumulativo por prioridad | raw/carmo_interventions | DB «intervención registrada…»; UT catálogo acumulativo |
 | §10 Aislamiento de DERMAPEX/COAMO | — | `carmo_app_gate` + `app_access` | Barrera restrictiva | — | DB inventario, «cuenta DERMAPEX no ve CARMO», «coordinación CARMO no ve COAMO/DERMAPEX»; 13 baterías canónicas sin regresión |

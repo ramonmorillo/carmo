@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import { ErrorState } from '../components/common/ErrorState';
 import { LoadingState } from '../components/ui/LoadingState';
@@ -93,7 +93,10 @@ function CurrentSummary({ s, def, catalog }: { s: Stratification; def: CmoModelD
 function StratificationForm({ data, def, canSave, previous, reload }: { data: Data; def: CmoModelDefinition; canSave: boolean; previous: Stratification | null; reload: () => Promise<void> }) {
   const save = useSave();
   const openVisits = data.visits.filter((v) => v.status !== 'cancelled' && v.record_state !== 'closed');
-  const [visitId, setVisitId] = useState(openVisits.find((v) => v.visit_code === 'BASAL')?.id ?? openVisits[0]?.id ?? '');
+  // Desde la ficha de visita se llega con ?visit=… y la estratificación se vincula a esa visita.
+  const [params] = useSearchParams();
+  const requested = openVisits.find((v) => v.id === params.get('visit'))?.id;
+  const [visitId, setVisitId] = useState(requested ?? openVisits.find((v) => v.visit_code === 'BASAL')?.id ?? openVisits[0]?.id ?? '');
   const [inputs, setInputs] = useState<Record<string, string>>(() => ({ ...(previous?.inputs ?? {}) }));
 
   const suggestions = useMemo(() => {

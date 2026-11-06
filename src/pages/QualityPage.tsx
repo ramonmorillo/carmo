@@ -14,7 +14,7 @@ import { carmo, type Administration, type CmoModel, type Deviation, type Instrum
 import { readWholeTable, supabaseDataSource } from '../services/researchExport/reader';
 
 type Row = { patient: Patient; items: PendingItem[] };
-const KINDS: PendingKind[] = ['missing_data', 'questionnaire', 'stratification', 'overdue', 'to_close', 'deviation'];
+const KINDS: PendingKind[] = ['missing_data', 'medication', 'questionnaire', 'stratification', 'overdue', 'to_close', 'deviation'];
 
 export function QualityPage() {
   const session = useCarmoSession();
@@ -29,13 +29,15 @@ export function QualityPage() {
     Promise.all([
       all<Patient>('carmo_patients'), all<Visit>('carmo_visits'), all<ObservationRow>('carmo_observations'), all<Administration>('carmo_questionnaire_administrations'),
       all<Stratification>('carmo_stratifications'), all<Deviation>('carmo_deviations'), carmo.variables(), carmo.instruments(), carmo.cmoModels(),
-    ]).then(([patients, visits, obs, admins, strats, devs, variables, instruments, models]: [Patient[], Visit[], ObservationRow[], Administration[], Stratification[], Deviation[], Variable[], Instrument[], CmoModel[]]) => {
+      all<{ visit_id: string }>('carmo_visit_medication_reviews', 'visit_id'),
+    ]).then(([patients, visits, obs, admins, strats, devs, variables, instruments, models, reviews]: [Patient[], Visit[], ObservationRow[], Administration[], Stratification[], Deviation[], Variable[], Instrument[], CmoModel[], Array<{ visit_id: string }>]) => {
+      const reviewed = reviews.map((r) => r.visit_id);
       const followUp = (models.find((m) => m.status === 'validated')?.definition.followUp as Record<string, { restratifyMonths: number | null }> | undefined) ?? null;
       const today = todayIso();
       setRows(patients.map((p) => ({ patient: p, items: computePending({
         patientStatus: p.status, visits: visits.filter((v) => v.patient_id === p.id), variables, observations: obs.filter((o) => o.patient_id === p.id),
         administrations: admins.filter((a) => a.patient_id === p.id), instruments, stratifications: strats.filter((s) => s.patient_id === p.id),
-        deviations: devs.filter((d) => d.patient_id === p.id), followUp, today,
+        deviations: devs.filter((d) => d.patient_id === p.id), followUp, today, medicationReviewedVisitIds: reviewed,
       }) })));
     }).catch((e: Error) => setError(e.message));
   }, []);

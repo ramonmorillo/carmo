@@ -19,18 +19,20 @@ import { useCarmoSession, type CarmoSession } from '../lib/session';
 import { useSave } from '../lib/useSave';
 import {
   carmo, carmoWrite, type Administration, type Consent, type Deviation, type Dispensation, type EligibilityAnswer, type EligibilityCriterion,
-  type CmoModel, type Instrument, type ObservationRow, type Variable,
+  type CmoModel, type Instrument, type Intervention, type MedicationReview, type ObservationRow, type Variable,
   type Patient, type Profile, type Stratification, type Treatment, type TreatmentEvent, type Visit, type VisitWindow,
 } from '../services/carmoData';
-import { TreatmentPanel } from './TreatmentPanel';
+import { MedicationPanel } from './MedicationPanel';
 import { AuditHistory } from './AuditHistory';
 import { computePending, PENDING_KIND_LABELS } from '../domain/pending';
+import { completeness, REQ_STATUS_LABELS, visitRequirements, type Requirement, type SectionKey } from '../domain/visitRequirements';
 
 type Data = {
   patient: Patient; visits: Visit[]; windows: VisitWindow[]; criteria: EligibilityCriterion[]; answers: EligibilityAnswer[]; consents: Consent[];
   blockers: string[]; administrations: Administration[]; deviations: Deviation[]; profiles: Profile[];
   treatments: Treatment[]; events: TreatmentEvent[]; dispensations: Dispensation[]; currentStrat: Stratification | null;
   strats: Stratification[]; observations: ObservationRow[]; variables: Variable[]; instruments: Instrument[]; models: CmoModel[];
+  reviews: MedicationReview[]; interventions: Intervention[];
 };
 
 export function PatientDetailPage() {
@@ -44,17 +46,18 @@ export function PatientDetailPage() {
       const patient = await carmo.patient(id);
       if (!patient) { setError('Paciente no encontrado o fuera de su ámbito.'); return; }
       const clinical = ROLE_CAN.readClinical(session.role);
-      const [visits, windows, criteria, answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations, strats, observations, variables, instruments, models] = await Promise.all([
+      const [visits, windows, criteria, answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations, strats, observations, variables, instruments, models, reviews, interventions] = await Promise.all([
         carmo.visits(id), carmo.windows(), carmo.criteria(), clinical ? carmo.answers(id) : [], clinical ? carmo.consents(id) : [],
         patient.status === 'screening' ? carmo.inclusionBlockers(id) : Promise.resolve([] as string[]),
         carmo.administrations(id), clinical ? carmo.deviations(id) : [], carmo.profiles(),
         clinical ? carmo.treatments(id) : [], clinical ? carmo.treatmentEvents(id) : [], clinical ? carmo.dispensations(id) : [],
         clinical ? carmo.stratifications(id) : [],
         clinical ? carmo.observations(id) : [], carmo.variables(), carmo.instruments(), clinical ? carmo.cmoModels() : [],
+        clinical ? carmo.medicationReviews(id) : [], clinical ? carmo.interventions(id) : [],
       ]);
       setData({ patient, visits, windows, criteria: criteria.filter((c) => c.set_id === patient.eligibility_set_id).sort((a, b) => a.ordinal - b.ordinal),
         answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations,
-        currentStrat: strats.find((s) => !strats.some((n) => n.supersedes_id === s.id)) ?? null, strats, observations, variables, instruments, models });
+        currentStrat: strats.find((s) => !strats.some((n) => n.supersedes_id === s.id)) ?? null, strats, observations, variables, instruments, models, reviews, interventions });
     } catch (e) { setError((e as Error).message); }
   }, [id, session.role]);
   useEffect(() => { void load(); }, [load]);
@@ -84,7 +87,7 @@ export function PatientDetailPage() {
       {patient.status === 'screening' ? <InclusionSection data={data} session={session} reload={load} /> : null}
       {patient.status !== 'screening' && patient.status !== 'not_included' ? <VisitsSection data={data} session={session} reload={load} /> : null}
       {ROLE_CAN.readClinical(session.role) && patient.status !== 'screening' && patient.status !== 'not_included' ? (
-        <TreatmentPanel patient={patient} treatments={data.treatments} events={data.events} dispensations={data.dispensations} canWrite={ROLE_CAN.writeClinical(session.role) && patient.status === 'included'} reload={load} />
+        <MedicationPanel patient={patient} treatments={data.treatments} events={data.events} dispensations={data.dispensations} canWrite={ROLE_CAN.writeClinical(session.role) && patient.status === 'included'} reload={load} />
       ) : null}
       {ROLE_CAN.writeClinical(session.role) && patient.status === 'included' ? <StudyExitSection data={data} reload={load} /> : null}
       {ROLE_CAN.readClinical(session.role) && patient.status !== 'screening' ? <DeviationsSection data={data} session={session} reload={load} /> : null}
@@ -178,52 +181,105 @@ function InclusionSection({ data, session, reload }: { data: Data; session: Carm
   );
 }
 
+const SHORT_LINKS: Array<[SectionKey, string]> = [['datos', 'Datos'], ['variables', 'Variables'], ['medicacion', 'Medicación'], ['cmo', 'CMO'], ['intervenciones', 'Intervenciones'], ['cuestionarios', 'Cuestionarios'], ['cierre', 'Cierre']];
+
+function reqCell(r: Requirement | undefined, text?: string) {
+  if (!r) return <span className="cell-muted">—</span>;
+  if (r.status === 'not_applicable' || r.status === 'optional') return <span className="cell-muted" title={r.detail}>{text ?? '—'}</span>;
+  return <span title={r.detail}><StatusBadge tone={r.status === 'done' ? 'positive' : r.status === 'pending' ? 'warning' : 'neutral'}>{text ?? REQ_STATUS_LABELS[r.status]}</StatusBadge></span>;
+}
+
+/** Longitudinalidad de visitas (como en IRIS): una fila por visita con el estado de cada bloque y acceso directo. */
 function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSession; reload: () => Promise<void> }) {
   const save = useSave();
   const existing = new Set(data.visits.filter((v) => v.status !== 'cancelled').map((v) => v.visit_code));
   const missing = PROGRAMMED_VISITS.filter((c) => !existing.has(c));
   const canWrite = ROLE_CAN.writeClinical(session.role) && data.patient.status === 'included';
+  const clinical = ROLE_CAN.readClinical(session.role);
   const order = (v: Visit) => (v.visit_code === 'EXTRA' ? 99 : PROGRAMMED_VISITS.indexOf(v.visit_code as VisitCode));
-  const visits = [...data.visits].sort((a, b) => (a.planned_date ?? a.actual_date ?? '').localeCompare(b.planned_date ?? b.actual_date ?? '') || order(a) - order(b));
+  const visits = [...data.visits].sort((a, b) => (a.actual_date ?? a.planned_date ?? '').localeCompare(b.actual_date ?? b.planned_date ?? '') || order(a) - order(b));
   const win = (id: string) => data.windows.find((w) => w.visit_id === id);
-  const iexpacOf = (visitId: string) => data.administrations.find((a) => a.visit_id === visitId && a.instrument_code === 'IEXPAC');
+  const validated = data.models.find((m) => m.status === 'validated');
+  const followUp = (validated?.definition.followUp as Record<string, { restratifyMonths: number | null }> | undefined) ?? null;
+  const reqsOf = (v: Visit) => visitRequirements(v, {
+    variables: data.variables, observations: data.observations, administrations: data.administrations, instruments: data.instruments,
+    stratifications: data.strats, interventionCount: data.interventions.filter((i) => i.visit_id === v.id).length,
+    review: data.reviews.find((r) => r.visit_id === v.id) ?? null, followUp, today: todayIso(),
+  });
+  const stratOf = (v: Visit) => data.strats.filter((s) => s.visit_id === v.id && !data.strats.some((n) => n.supersedes_id === s.id))[0];
 
   return (
     <section className="card">
-      <h2>Visitas</h2>
+      <h2>Longitudinalidad de visitas</h2>
+      <p className="carmo-hint">Secuencia de visitas del protocolo (inicial, S12, S24, S36, final) y contactos extraordinarios, con el estado de cada bloque. Pase el cursor sobre un estado para ver el detalle; los enlaces abren el bloque de la visita.</p>
       {canWrite && missing.length > 0 ? (
-        <div className="carmo-actions">
+        <div className="carmo-actions carmo-longitudinal-actions">
           <button type="button" className="button-link" disabled={save.saving}
             onClick={() => void save.run(() => carmoWrite.insert('carmo_visits', missing.map((code) => ({ patient_id: data.patient.id, visit_code: code }))), reload)}>
             Programar visitas previstas ({missing.map((m) => VISIT_LABELS[m]).join(', ')})
           </button>
         </div>
       ) : null}
+      {visits.length > 0 ? (
+        <ol className="visit-timeline" aria-label="Línea temporal de visitas">
+          {visits.map((v) => {
+            const s = stratOf(v);
+            return (
+              <li key={v.id}>
+                <span className={v.status === 'done' ? 'timeline-node is-done' : v.status === 'cancelled' || v.status === 'not_done' ? 'timeline-node is-cancelled' : 'timeline-node'} aria-hidden="true" />
+                <Link className="timeline-title" to={`/visits/${v.id}`}>{label(VISIT_LABELS, v.visit_code)}</Link>
+                <span className="timeline-date">{fmtDate(v.actual_date ?? v.planned_date)} · {label(VISIT_STATUS_LABELS, v.status)}</span>
+                <span className="timeline-meta">{s ? <StatusBadge tone="info">{PRIORITY_LABELS[effectivePriority(s)]} · {s.total_score} pts</StatusBadge> : <span className="carmo-hint">Sin estratificar</span>}</span>
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
+      <div className="table-wrap"><table className="carmo-table">
+        <thead><tr><th>Visita</th><th>Fecha</th><th>Estado</th>{clinical ? <><th>Variables</th><th>Medicación</th><th>CMO</th><th>Cuestionarios</th><th className="num">Interv.</th><th>Completitud</th></> : null}<th>Registro</th><th>Acciones</th></tr></thead>
+        <tbody>{visits.map((v) => {
+          const w = win(v.id);
+          const reqs = clinical ? reqsOf(v) : [];
+          const r = (k: SectionKey) => reqs.find((x) => x.key === k);
+          const s = stratOf(v);
+          const c = completeness(reqs);
+          const nInt = data.interventions.filter((i) => i.visit_id === v.id).length;
+          return (
+            <tr key={v.id}>
+              <td className="strong"><Link to={`/visits/${v.id}`}>{label(VISIT_LABELS, v.visit_code)}</Link></td>
+              <td className="numeric">{fmtDate(v.actual_date ?? v.planned_date)}{!v.actual_date && v.planned_date ? <><br /><span className="carmo-hint">prevista</span></> : null}
+                {w ? <><br /><span className="carmo-hint">Ventana: {WINDOW_STATUS_LABELS[w.window_status as WindowStatus] ?? w.window_status}</span></> : null}</td>
+              <td>{label(VISIT_STATUS_LABELS, v.status)}{isOverdue(v.planned_date, v.status, todayIso()) ? <> <StatusBadge tone="warning">Vencida</StatusBadge></> : null}<br /><span className="carmo-hint">{label(MODALITY_LABELS, v.modality)}</span></td>
+              {clinical && v.status !== 'done' ? <>
+                <td colSpan={4}><span className="carmo-hint">{v.status === 'planned' ? 'Visita aún no realizada: los bloques se completan al realizarla.' : 'Visita no realizada o anulada.'}</span></td>
+                <td className="num">{nInt}</td>
+                <td><span className="cell-muted">—</span></td>
+              </> : null}
+              {clinical && v.status === 'done' ? <>
+                <td>{reqCell(r('variables'), r('variables')?.status === 'done' ? 'Completas' : r('variables')?.status === 'pending' ? 'Faltan' : undefined)}</td>
+                <td>{reqCell(r('medicacion'), r('medicacion')?.status === 'done' ? 'Revisada' : r('medicacion')?.status === 'pending' ? 'Sin revisar' : undefined)}</td>
+                <td>{s ? <span title={r('cmo')?.detail}><StatusBadge tone={s.validation_status === 'pending' ? 'warning' : 'info'}>{s.total_score} pts · P{effectivePriority(s)}</StatusBadge></span> : reqCell(r('cmo'), r('cmo')?.status === 'pending' ? 'Pendiente' : undefined)}</td>
+                <td>{reqCell(r('cuestionarios'), r('cuestionarios')?.status === 'done' ? 'Completos' : r('cuestionarios')?.status === 'pending' ? 'Pendientes' : undefined)}</td>
+                <td className="num">{nInt}</td>
+                <td><StatusBadge tone={c.done === c.required ? 'positive' : 'neutral'}>{c.done}/{c.required}</StatusBadge></td>
+              </> : null}
+              <td>{label(RECORD_STATE_LABELS, v.record_state)}</td>
+              <td><div className="table-actions">
+                {(clinical ? SHORT_LINKS : SHORT_LINKS.filter(([k]) => k === 'datos' || k === 'cuestionarios')).map(([k, t]) => <Link key={k} to={`/visits/${v.id}?seccion=${k}`}>{t}</Link>)}
+              </div></td>
+            </tr>
+          );
+        })}</tbody>
+      </table></div>
       {canWrite ? (
-        <div className="carmo-actions" style={{ marginTop: '0.5rem' }}>
+        <div className="carmo-actions" style={{ marginTop: '0.75rem' }}>
           <button type="button" className="button-secondary" disabled={save.saving}
             onClick={() => void save.run(() => carmoWrite.insert('carmo_visits', { patient_id: data.patient.id, visit_code: 'EXTRA', status: 'planned', planned_date: todayIso() }), reload)}>
             Añadir contacto extraordinario
           </button>
         </div>
       ) : null}
-      <p className="carmo-hint">Fechas previstas según el calendario versionado provisional (inclusión + días). Ventanas de semanas 12-48 no definidas en la fuente disponible.</p>
-      <div className="table-wrap"><table className="carmo-table">
-        <thead><tr><th>Visita</th><th>Prevista</th><th>Efectiva</th><th>Estado</th><th>Modalidad</th><th>Ventana</th><th>Registro</th><th>IEXPAC</th></tr></thead>
-        <tbody>{visits.map((v) => {
-          const w = win(v.id);
-          const q = iexpacOf(v.id);
-          return (
-            <tr key={v.id}>
-              <td><Link to={`/visits/${v.id}`}>{label(VISIT_LABELS, v.visit_code)}</Link></td><td>{fmtDate(v.planned_date)}</td><td>{fmtDate(v.actual_date)}</td>
-              <td>{label(VISIT_STATUS_LABELS, v.status)}{isOverdue(v.planned_date, v.status, todayIso()) ? <> <StatusBadge tone="warning">Vencida</StatusBadge></> : null}</td>
-              <td>{label(MODALITY_LABELS, v.modality)}</td><td>{w ? WINDOW_STATUS_LABELS[w.window_status as WindowStatus] ?? w.window_status : '—'}</td>
-              <td>{label(RECORD_STATE_LABELS, v.record_state)}</td>
-              <td>{v.visit_code === 'BASAL' || v.visit_code === 'FINAL' ? (q ? (q.status === 'completed' ? (q.scores?.valid ? fmtNum(q.scores.global) : 'Incompleto') : 'En curso') : 'Pendiente') : '—'}</td>
-            </tr>
-          );
-        })}</tbody>
-      </table></div>
+      <p className="carmo-hint">Fechas previstas según el calendario versionado del protocolo (inclusión + días).</p>
       <SaveStatus state={save.state} />
     </section>
   );
@@ -292,6 +348,7 @@ function PendingPanel({ data }: { data: Data }) {
     patientStatus: data.patient.status, visits: data.visits, variables: data.variables, observations: data.observations,
     administrations: data.administrations, instruments: data.instruments, stratifications: data.strats, deviations: data.deviations,
     followUp: (validated?.definition.followUp as Record<string, { restratifyMonths: number | null }> | undefined) ?? null, today: todayIso(),
+    medicationReviewedVisitIds: data.reviews.map((r) => r.visit_id),
   });
   if (data.patient.status === 'screening' || data.patient.status === 'not_included') return null;
   const tone = (sev: string) => (sev === 'high' ? 'danger' : sev === 'medium' ? 'warning' : 'neutral') as 'danger' | 'warning' | 'neutral';
@@ -301,7 +358,7 @@ function PendingPanel({ data }: { data: Data }) {
       {items.length === 0 ? <p className="text-muted">No hay datos pendientes según el protocolo y el modelo CMO.</p> : (
         <ul>{items.map((i, n) => (
           <li key={n}><StatusBadge tone={tone(i.severity)}>{PENDING_KIND_LABELS[i.kind]}</StatusBadge>{' '}
-            {i.visitId ? <Link to={`/visits/${i.visitId}`}>{i.message}</Link> : i.kind === 'stratification' ? <Link to={`/patients/${data.patient.id}/stratification`}>{i.message}</Link> : i.message}</li>
+            {i.visitId ? <Link to={`/visits/${i.visitId}${i.kind === 'medication' ? '?seccion=medicacion' : i.kind === 'questionnaire' ? '?seccion=cuestionarios' : i.kind === 'missing_data' ? '?seccion=variables' : i.kind === 'to_close' ? '?seccion=cierre' : ''}`}>{i.message}</Link> : i.kind === 'stratification' ? <Link to={`/patients/${data.patient.id}/stratification`}>{i.message}</Link> : i.message}</li>
         ))}</ul>
       )}
     </section>

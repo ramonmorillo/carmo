@@ -42,10 +42,13 @@ export type StoredScores = {
 export type Treatment = {
   id: string; patient_id: string; active_ingredient: string; is_study_lipid_therapy: boolean; presentation: string | null; dose_amount: number | null; dose_unit: string | null;
   frequency: string | null; route: string | null; start_date: string; end_date: string | null; status: string; started_before_inclusion: boolean;
+  cima_nregistro: string | null; cima_cn: string | null; cima_name: string | null; atc_code: string | null; pharmaceutical_form: string | null;
+  frequency_code: string | null; visit_id: string | null;
 };
-export type TreatmentEvent = { id: string; treatment_id: string; event_type: string; event_date: string; new_dose_amount: number | null; new_dose_unit: string | null; new_frequency: string | null; reason: string | null; adverse_reaction_description: string | null };
+export type MedicationReview = { visit_id: string; patient_id: string; outcome: string; active_medication_count: number; revision: number; reviewed_at: string };
+export type TreatmentEvent = { id: string; treatment_id: string; visit_id: string | null; event_type: string; event_date: string; new_dose_amount: number | null; new_dose_unit: string | null; new_frequency: string | null; reason: string | null; adverse_reaction_description: string | null };
 export type Dispensation = { id: string; treatment_id: string; dispensed_date: string; units_dispensed: number; days_supply: number | null; supersedes_id: string | null };
-export type Evolution = { visit_id: string; clinical_evolution: string | null; pharmacotherapy_update: string | null; motivational_followup: string | null; drp_identified: boolean | null; drp_description: string | null; revision: number };
+export type Evolution = { visit_id: string; clinical_evolution: string | null; pharmacotherapy_update: string | null; motivational_followup: string | null; revision: number };
 export type Deviation = { id: string; patient_id: string; visit_id: string | null; category: string; description: string; detected_date: string; status: string };
 export type CmoModel = { version: string; status: string; source_reference: string; definition: import('../domain/cmoEngine').CmoModelDefinition; validated_by: string | null; validated_at: string | null };
 export type Stratification = {
@@ -113,6 +116,7 @@ export const carmo = {
   administrations: (patientId?: string) => list<Administration>('carmo_questionnaire_administrations', (q) => (patientId ? q.eq('patient_id', patientId) : q)),
   treatments: (patientId: string) => list<Treatment>('carmo_treatments', (q) => q.eq('patient_id', patientId)),
   treatmentEvents: (patientId: string) => list<TreatmentEvent>('carmo_treatment_events', (q) => q.eq('patient_id', patientId)),
+  medicationReviews: (patientId: string) => list<MedicationReview>('carmo_visit_medication_reviews', (q) => q.eq('patient_id', patientId)),
   dispensations: (patientId: string) => list<Dispensation>('carmo_dispensations_current', (q) => q.eq('patient_id', patientId)),
   async evolution(visitId: string): Promise<Evolution | null> {
     const { data, error } = await client().from('carmo_visit_evolutions').select('*').eq('visit_id', visitId).maybeSingle();
