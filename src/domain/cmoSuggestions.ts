@@ -28,7 +28,7 @@ export function suggestNutritionalStatus(bmi: number | null | undefined): Sugges
 
 export function suggestPolypharmacy(activeIngredients: number | null | undefined): Suggestion | null {
   if (activeIngredients === null || activeIngredients === undefined) return null;
-  const b = `${activeIngredients} principios activos registrados como activos en CARMO (revisar si el registro de tratamientos está completo)`;
+  const b = `${activeIngredients} principios activos crónicos activos en la medicación de CARMO (sin pautas a demanda ni dosis únicas; comprobar que la medicación está revisada)`;
   if (activeIngredients < 7) return { value: 'lt_7', basis: b };
   if (activeIngredients < 10) return { value: '7_10', basis: b };
   if (activeIngredients === 10) return { value: null, basis: `${b}: 10 está en «7-10» y en «≥ 10»` };

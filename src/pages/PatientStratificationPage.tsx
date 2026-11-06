@@ -9,6 +9,7 @@ import { SaveStatus } from '../components/ui/SaveStatus';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { assertModelUsable, catalogForPriority, CMO_ENGINE_VERSION, computeCmo, type CmoModelDefinition } from '../domain/cmoEngine';
 import { effectivePriority, PRIORITY_LABELS, VALIDATION_LABELS } from '../domain/cmoLabels';
+import { chronicActiveIngredients } from '../domain/medication';
 import { suggestAgeGroup, suggestNutritionalStatus, suggestPolypharmacy, suggestTobacco, suggestYes, type Suggestion } from '../domain/cmoSuggestions';
 import { currentObservations, deriveBmi } from '../domain/observations';
 import { patientCode, ROLE_CAN, VISIT_LABELS } from '../domain/study';
@@ -104,11 +105,11 @@ function StratificationForm({ data, def, canSave, previous, reload }: { data: Da
     const latest = (code: string) => cur.filter((o) => o.variable_code === code).sort((a, b) => b.observed_date.localeCompare(a.observed_date))[0];
     const w = latest('weight'); const h = latest('height');
     const bmi = deriveBmi(w ? { value: w.value_numeric, unit: w.unit } : undefined, h ? { value: h.value_numeric, unit: h.unit } : undefined);
-    const active = data.treatments.filter((t) => t.status === 'active').length;
+    const ingredients = chronicActiveIngredients(data.treatments);
     const out: Record<string, Suggestion | null> = {
       age_group: suggestAgeGroup(latest('age_years')?.value_numeric ?? null),
       nutritional_status: suggestNutritionalStatus(bmi),
-      polypharmacy: data.treatments.length ? suggestPolypharmacy(active) : null,
+      polypharmacy: data.treatments.length ? suggestPolypharmacy(ingredients.length) : null,
       tobacco: suggestTobacco(latest('tobacco_use')?.value_boolean ?? null, latest('years_since_quitting')?.value_numeric ?? null),
       hypertension: suggestYes(latest('hypertension')?.value_boolean, 'Hipertensión registrada en el eCRD'),
       base_cv_pathology: suggestYes(latest('secondary_prevention')?.value_boolean, 'Prevención secundaria registrada en el eCRD'),
