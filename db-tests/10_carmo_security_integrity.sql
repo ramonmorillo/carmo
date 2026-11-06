@@ -352,6 +352,18 @@ commit;
 begin;
 select carmo_test.as_user('ca000000-0000-4000-8000-000000000002');
 update public.carmo_visits set record_state = 'reviewed' where visit_code = 'BASAL';
+select carmo_test.expect_fail($$update public.carmo_visits set record_state = 'closed' where visit_code = 'BASAL'$$, 'cierre bloqueado con variables y revisión de medicación pendientes');
+select carmo_test.expect((select cardinality(public.carmo_visit_close_blockers(id)) = 2 from public.carmo_visits where visit_code = 'BASAL'),
+  'la consulta de bloqueos devuelve los bloques pendientes (variables y medicación)');
+-- Se completan los bloques: variables restantes como ausentes con motivo y revisión «sin medicación».
+insert into public.carmo_observations (patient_id, visit_id, variable_code, is_missing, missing_reason, observed_date, data_source, temporal_context)
+  select vi.patient_id, vi.id, va.code, true, 'not_available', vi.actual_date, 'clinical_record', 'baseline'
+    from public.carmo_visits vi cross join public.carmo_variables va
+   where vi.visit_code = 'BASAL' and va.status not in ('blocked', 'retired') and va.section <> 'cv_event' and 'BASAL' = any(va.allowed_visits)
+     and va.code not in ('years_since_quitting', 'cigarettes_per_day', 'smoking_years')
+     and not exists (select 1 from public.carmo_observations o where o.visit_id = vi.id and o.variable_code = va.code);
+insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_medication' from public.carmo_visits where visit_code = 'BASAL';
+select carmo_test.expect((select cardinality(public.carmo_visit_close_blockers(id)) = 0 from public.carmo_visits where visit_code = 'BASAL'), 'sin bloques pendientes');
 update public.carmo_visits set record_state = 'closed' where visit_code = 'BASAL';
 select carmo_test.expect_fail($$update public.carmo_visits set modality = 'phone' where visit_code = 'BASAL'$$, 'una visita cerrada no se edita');
 select carmo_test.expect_fail($$insert into public.carmo_observations (patient_id, visit_id, variable_code, value_boolean, observed_date, data_source, temporal_context)
@@ -375,22 +387,23 @@ select carmo_test.expect_fail($$insert into public.carmo_treatments (patient_id,
 select carmo_test.expect_fail($$insert into public.carmo_treatments (patient_id, active_ingredient, cima_nregistro, cima_name, dose_amount, dose_unit, frequency_code, route, start_date)
   select id, 'Evolocumab', '115016001', 'Repatha 140 mg solución inyectable en pluma precargada', 140, 'mg', 'cada quince días', 'subcutaneous', current_date - 30 from public.carmo_patients where screening_code = 'SEL-001-002'$$,
   'pauta fuera de la lista rechazada');
-select carmo_test.expect((select count(*) from public.carmo_visit_medication_reviews) = 0, 'sin revisiones de medicación al inicio');
-select carmo_test.expect_fail($$insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_changes' from public.carmo_visits where visit_code = 'BASAL'$$,
+select carmo_test.expect((select count(*) from public.carmo_visit_medication_reviews) = 1, 'solo la revisión «sin medicación» de la visita inicial');
+select carmo_test.expect_fail($$insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_changes' from public.carmo_visits where visit_code = 'S12'$$,
   'revisión «sin cambios» rechazada si no hay medicación registrada');
 insert into public.carmo_treatments (patient_id, active_ingredient, cima_nregistro, cima_name, atc_code, dose_amount, dose_unit, frequency_code, route, start_date, visit_id)
   select p.id, 'Evolocumab', '115016001', 'Repatha 140 mg solución inyectable en pluma precargada', 'C10AX13', 140, 'mg', 'q2w', 'subcutaneous', current_date - 30, v.id
     from public.carmo_patients p join public.carmo_visits v on v.patient_id = p.id and v.visit_code = 'BASAL' where p.screening_code = 'SEL-001-002';
 select carmo_test.expect((select frequency = 'Cada 2 semanas' and presentation = cima_name from public.carmo_treatments), 'la BD rellena la etiqueta de la pauta y la presentación desde CIMA');
 select carmo_test.expect((select visit_id is not null from public.carmo_treatment_events where event_type = 'start'), 'el inicio queda vinculado a la visita');
-select carmo_test.expect_fail($$insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_medication' from public.carmo_visits where visit_code = 'BASAL'$$,
+select carmo_test.expect_fail($$insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_medication' from public.carmo_visits where visit_code = 'S12'$$,
   'no se marca «sin medicación» con medicación activa');
-insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_changes' from public.carmo_visits where visit_code = 'BASAL';
-select carmo_test.expect((select active_medication_count = 1 and revision = 1 and reviewed_by is not null from public.carmo_visit_medication_reviews), 'revisión de la visita con recuento calculado por la BD');
-select carmo_test.expect_fail($$update public.carmo_visit_medication_reviews set outcome = 'changes_recorded', revision = 1$$, 'modificar la revisión exige motivo');
-update public.carmo_visit_medication_reviews set outcome = 'changes_recorded', revision = 1, correction_reason = 'Se registra el cambio de pauta';
-select carmo_test.expect((select revision = 2 from public.carmo_visit_medication_reviews), 'revisión corregida con motivo (revisión 2)');
-select carmo_test.expect_fail($$update public.carmo_visit_medication_reviews set outcome = 'no_changes', revision = 1, correction_reason = 'Conflicto simulado'$$, 'concurrencia: revisión obsoleta rechazada');
+insert into public.carmo_visit_medication_reviews (visit_id, outcome) select id, 'no_changes' from public.carmo_visits where visit_code = 'S12';
+select carmo_test.expect((select r.active_medication_count = 1 and r.revision = 1 and r.reviewed_by is not null from public.carmo_visit_medication_reviews r join public.carmo_visits v on v.id = r.visit_id where v.visit_code = 'S12'), 'revisión de la visita con recuento calculado por la BD');
+select carmo_test.expect_fail($$update public.carmo_visit_medication_reviews r set outcome = 'changes_recorded', revision = 1 from public.carmo_visits v where v.id = r.visit_id and v.visit_code = 'S12'$$, 'modificar la revisión exige motivo');
+update public.carmo_visit_medication_reviews r set outcome = 'changes_recorded', revision = 1, correction_reason = 'Se registra el cambio de pauta' from public.carmo_visits v where v.id = r.visit_id and v.visit_code = 'S12';
+select carmo_test.expect((select r.revision = 2 from public.carmo_visit_medication_reviews r join public.carmo_visits v on v.id = r.visit_id where v.visit_code = 'S12'), 'revisión corregida con motivo (revisión 2)');
+select carmo_test.expect_fail($$update public.carmo_visit_medication_reviews r set outcome = 'no_changes', revision = 2 from public.carmo_visits v where v.id = r.visit_id and v.visit_code = 'S12'$$, 'una nueva modificación exige un motivo nuevo (no reutiliza el anterior)');
+select carmo_test.expect_fail($$update public.carmo_visit_medication_reviews r set outcome = 'no_changes', revision = 1, correction_reason = 'Conflicto simulado' from public.carmo_visits v where v.id = r.visit_id and v.visit_code = 'S12'$$, 'concurrencia: revisión obsoleta rechazada');
 select carmo_test.expect_fail($$delete from public.carmo_visit_medication_reviews$$, 'una revisión de medicación no se borra');
 select carmo_test.expect((select is_study_lipid_therapy and started_before_inclusion from public.carmo_treatments), 'evolocumab reconocido como tratamiento principal iniciado antes de la inclusión');
 select carmo_test.expect((select count(*) from public.carmo_treatment_events where event_type = 'start') = 1, 'evento de inicio creado automáticamente');

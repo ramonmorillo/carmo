@@ -69,7 +69,7 @@ export function VisitPage() {
   const reqs = clinical ? visitRequirements(visit, {
     variables: data.variables, observations: data.observations, administrations: data.administrations, instruments: data.instruments,
     stratifications: data.strats, interventionCount: data.interventions.filter((i) => i.visit_id === visit.id).length, review: data.review,
-    followUp: (validated?.definition.followUp as Record<string, { restratifyMonths: number | null }> | undefined) ?? null, today: todayIso(),
+    followUp: (validated?.definition.followUp as Record<string, { restratifyMonths: number | null }> | undefined) ?? null, today: todayIso(), cmoAvailable: Boolean(validated),
   }) : [];
   const visible: SectionKey[] = clinical ? SECTION_ORDER : ['datos', 'cuestionarios', ...(ROLE_CAN.close(session.role) ? ['cierre' as SectionKey] : [])];
   const requested = params.get('seccion') as SectionKey | null;
@@ -190,21 +190,20 @@ function VisitForm({ data, canWrite, reload, userId }: { data: Data; canWrite: b
 function RecordStateActions({ visit, reqs, reload }: { visit: Visit; reqs: Requirement[]; reload: () => Promise<void> }) {
   const save = useSave();
   const [reason, setReason] = useState('');
-  const [ack, setAck] = useState(false);
   const blocking = blockingBeforeClose(reqs);
   const set = (state: string, extra: Record<string, unknown> = {}) => void save.run(() => carmoWrite.update('carmo_visits', { record_state: state, ...extra }, { id: visit.id, revision: visit.revision }), reload);
-  const needsAck = blocking.length > 0 && visit.record_state !== 'closed';
+  const open = visit.record_state !== 'closed';
   return (
     <div>
-      {needsAck ? (
-        <Notice tone="warning" title={`Quedan ${blocking.length} bloque(s) obligatorio(s) pendiente(s)`}>
+      {open && blocking.length > 0 ? (
+        <Notice tone="danger" title={`No se puede cerrar: ${blocking.length} bloque(s) obligatorio(s) pendiente(s)`}>
           <ul>{blocking.map((r) => <li key={r.key}><strong>{r.label}:</strong> {r.detail}</li>)}</ul>
-          <label><input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} /> Revisar o cerrar igualmente (lo pendiente seguirá apareciendo en «Datos pendientes» y en Calidad).</label>
+          <p className="carmo-hint">Complete cada bloque (o registre el motivo de ausencia del dato o de no realización del cuestionario). La base de datos aplica la misma regla. Puede marcar la visita como revisada mientras tanto.</p>
         </Notice>
-      ) : visit.record_state !== 'closed' ? <Notice tone="success">Todos los bloques obligatorios de la visita están completos.</Notice> : null}
+      ) : open ? <Notice tone="success">Todos los bloques obligatorios de la visita están completos: puede cerrarse.</Notice> : null}
       <div className="carmo-actions">
-        {visit.record_state === 'draft' ? <button type="button" className="button-secondary" disabled={save.saving || (needsAck && !ack)} onClick={() => set('reviewed')}>Marcar como revisada</button> : null}
-        {visit.record_state !== 'closed' ? <button type="button" className="button-link" disabled={save.saving || (needsAck && !ack)} onClick={() => set('closed')}>Cerrar visita</button> : null}
+        {visit.record_state === 'draft' ? <button type="button" className="button-secondary" disabled={save.saving} onClick={() => set('reviewed')}>Marcar como revisada</button> : null}
+        {open ? <button type="button" className="button-link" disabled={save.saving || blocking.length > 0} title={blocking.length ? 'Hay bloques obligatorios pendientes' : undefined} onClick={() => set('closed')}>Cerrar visita</button> : null}
         {visit.record_state !== 'draft' ? <>
           <input aria-label="Motivo de reapertura" placeholder="Motivo de reapertura" value={reason} onChange={(e) => setReason(e.target.value)} />
           <button type="button" className="button-secondary" disabled={save.saving || reason.trim().length < 5} onClick={() => set('draft', { reopen_reason: reason })}>Reabrir</button>

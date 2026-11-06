@@ -204,7 +204,7 @@ function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSe
   const reqsOf = (v: Visit) => visitRequirements(v, {
     variables: data.variables, observations: data.observations, administrations: data.administrations, instruments: data.instruments,
     stratifications: data.strats, interventionCount: data.interventions.filter((i) => i.visit_id === v.id).length,
-    review: data.reviews.find((r) => r.visit_id === v.id) ?? null, followUp, today: todayIso(),
+    review: data.reviews.find((r) => r.visit_id === v.id) ?? null, followUp, today: todayIso(), cmoAvailable: Boolean(validated),
   });
   const stratOf = (v: Visit) => data.strats.filter((s) => s.visit_id === v.id && !data.strats.some((n) => n.supersedes_id === s.id))[0];
 

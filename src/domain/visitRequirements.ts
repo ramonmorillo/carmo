@@ -31,6 +31,8 @@ type FollowUp = Record<string, { restratifyMonths: number | null }>;
 export type VisitContext = {
   variables: Variable[]; observations: Obs[]; administrations: Admin[]; instruments: Instrument[]; stratifications: Strat[];
   interventionCount: number; review: Review | null; followUp: FollowUp | null; today: string;
+  /** Hay un modelo CMO validado (sin él no se puede estratificar y el bloque no se exige; igual que la BD). */
+  cmoAvailable: boolean;
 };
 
 function addMonthsIso(iso: string, months: number): string {
@@ -79,7 +81,9 @@ export function visitRequirements(visit: Visit, ctx: VisitContext): Requirement[
     // 4. Estratificación CMO
     const own = ctx.stratifications.filter((s) => s.visit_id === visit.id && !ctx.stratifications.some((n) => n.supersedes_id === s.id));
     const ownLast = own.sort((a, b) => b.calculated_at.localeCompare(a.calculated_at))[0];
-    if (ownLast) {
+    if (!ctx.cmoAvailable) {
+      req.push({ key: 'cmo', label: SECTION_LABELS.cmo, status: 'not_applicable', detail: 'No hay modelo CMO validado: la estratificación no está disponible.' });
+    } else if (ownLast) {
       req.push({ key: 'cmo', label: SECTION_LABELS.cmo, status: ownLast.validation_status === 'pending' ? 'pending' : 'done',
         detail: `${ownLast.total_score ?? '—'} puntos · Prioridad ${ownLast.final_priority ?? ownLast.calculated_priority}${ownLast.validation_status === 'pending' ? ' · pendiente de validación profesional' : ' · validada'}.` });
     } else if (visit.visit_code === 'BASAL') {
@@ -126,7 +130,7 @@ export function visitRequirements(visit: Visit, ctx: VisitContext): Requirement[
   return req;
 }
 
-/** Requisitos obligatorios aún pendientes antes de cerrar (sin contar el propio cierre). */
+/** Requisitos obligatorios aún pendientes: impiden cerrar la visita (la BD aplica la misma regla, migración 10). */
 export function blockingBeforeClose(reqs: Requirement[]): Requirement[] {
   return reqs.filter((r) => r.status === 'pending' && r.key !== 'cierre');
 }

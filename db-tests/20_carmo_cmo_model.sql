@@ -52,12 +52,18 @@ insert into public.carmo_stratifications (patient_id, visit_id, model_version, e
     from public.carmo_visits v join public.carmo_patients p on p.id = v.patient_id where p.screening_code = 'SEL-001-003';
 select carmo_test.expect((select (item_results ->> 'total')::int = 18 and calculated_by = 'ca000000-0000-4000-8000-000000000003' and validation_status = 'pending'
   from public.carmo_stratifications), 'estratificación guardada con el resultado de la BD, autor y validación pendiente');
+select carmo_test.expect((select public.carmo_visit_close_blockers(v.id) @> array['Estratificación CMO pendiente de validación profesional']
+  from public.carmo_visits v join public.carmo_patients p on p.id = v.patient_id where p.screening_code = 'SEL-001-003'),
+  'con modelo validado, una estratificación pendiente de validación bloquea el cierre de la visita');
 select carmo_test.expect_fail($$update public.carmo_stratifications set total_score = 30$$, 'el resultado calculado es inmutable');
 select carmo_test.expect_fail($$update public.carmo_stratifications set validation_status = 'modified', final_priority = 3, validation_reason = 'bajar'$$,
   'el profesional no puede rebajar la prioridad (el modelo solo prevé elevarla)');
 select carmo_test.expect_fail($$update public.carmo_stratifications set validation_status = 'modified', final_priority = 1$$, 'elevar exige motivo');
 update public.carmo_stratifications set validation_status = 'modified', final_priority = 1, validation_reason = 'Descompensación reciente: criterio profesional';
 select carmo_test.expect((select final_priority = 1 and validated_by = 'ca000000-0000-4000-8000-000000000003' from public.carmo_stratifications), 'elevación a P1 con motivo y autor');
+select carmo_test.expect((select not (public.carmo_visit_close_blockers(v.id)::text like '%Estratificación%')
+  from public.carmo_visits v join public.carmo_patients p on p.id = v.patient_id where p.screening_code = 'SEL-001-003'),
+  'validada la estratificación, deja de bloquear el cierre');
 select carmo_test.expect_fail($$update public.carmo_stratifications set validation_status = 'confirmed', final_priority = 2$$, 'una validación no se rehace');
 insert into public.carmo_stratifications (patient_id, visit_id, model_version, engine_version, inputs, item_results, total_score, calculated_priority, justification, supersedes_id)
   select s.patient_id, s.visit_id, s.model_version, 'carmo-cmo-engine-2', '{"age_group": "19_49", "pregnancy": "yes", "nutritional_status": "normal", "female_cv_condition": "no", "base_cv_pathology": "no", "cv_comorbidity": "no", "hf_ischemic_combination": "no", "hf_af_combination": "no", "non_cv_comorbidity": "no", "dyslipidemia_above_target": "no", "lvef_below_40": "no", "venous_thromboembolism": "no", "hypertension": "no", "admissions_emergencies": "no", "first_year_post_coronary_event": "no", "regimen_changes": "no", "regimen_complexity": "no", "high_risk_medication": "no", "pharmacotherapy_goals_not_met": "no", "polypharmacy": "lt_7", "adherence": "adherent", "physical_activity": "regular", "tobacco": "no"}'::jsonb, '{}', 0, 1, 'Reestratificación', s.id from public.carmo_stratifications s;
