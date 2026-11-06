@@ -109,6 +109,7 @@ export const carmo = {
   variables: () => list<Variable>('carmo_variables'),
   observations: (patientId: string) => list<ObservationRow>('carmo_observations', (q) => q.eq('patient_id', patientId)),
   allCurrentObservations: () => list<ObservationRow>('carmo_observations_current'),
+  currentObservationsOf: (codes: string[]) => list<ObservationRow>('carmo_observations_current', (q) => q.in('variable_code', codes)),
   criteria: () => list<EligibilityCriterion>('carmo_eligibility_criteria'),
   answers: (patientId: string) => list<EligibilityAnswer>('carmo_eligibility_answers', (q) => q.eq('patient_id', patientId)),
   consents: (patientId: string) => list<Consent>('carmo_consents', (q) => q.eq('patient_id', patientId)),

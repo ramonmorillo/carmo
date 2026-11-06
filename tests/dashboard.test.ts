@@ -59,3 +59,32 @@ describe('panel: prioridades CMO vigentes', () => {
     expect(d.priorities).toEqual({ 1: 1, 2: 1, 3: 0, none: 1 });
   });
 });
+
+describe('panel con la organización de DERMAPEX', () => {
+  it('cohorte, evolución de prioridad, seguimiento, actividad y calidad', async () => {
+    const { computePanel } = await import('../src/domain/dashboard');
+    const s = (id: string, pid: string, vid: string, p: number, at: string, score: number, over: Record<string, unknown> = {}) =>
+      ({ id, patient_id: pid, visit_id: vid, supersedes_id: null, final_priority: null, calculated_priority: p, total_score: score, validation_status: 'confirmed', calculated_at: at, ...over });
+    const r = computePanel({
+      patients: [{ id: 'a', status: 'included', inclusion_date: '2026-01-01' }, { id: 'b', status: 'included', inclusion_date: '2026-10-01' }, { id: 'c', status: 'screening', inclusion_date: null }],
+      visits: [
+        { id: 'va', patient_id: 'a', visit_code: 'BASAL', status: 'done', planned_date: '2026-01-01', actual_date: '2026-01-02', record_state: 'closed' },
+        { id: 'va2', patient_id: 'a', visit_code: 'S12', status: 'done', planned_date: '2026-03-26', actual_date: '2026-03-30', record_state: 'draft' },
+        { id: 'vb', patient_id: 'b', visit_code: 'BASAL', status: 'done', planned_date: '2026-10-01', actual_date: '2026-10-01', record_state: 'draft' },
+        { id: 'vb2', patient_id: 'b', visit_code: 'S12', status: 'planned', planned_date: '2026-12-24', actual_date: null, record_state: 'draft' },
+      ],
+      strats: [s('1', 'a', 'va', 1, '2026-01-02T00:00:00Z', 25), s('2', 'a', 'va2', 2, '2026-03-30T00:00:00Z', 19, { supersedes_id: '1' })],
+      interventions: [{ id: 'i', patient_id: 'a', visit_id: 'va', catalog_code: 'X', intervention_date: '2026-01-02', is_scheduled: true, modality: 'in_person' }],
+      catalogDomain: { X: 'motivation' },
+      demographics: [{ patient_id: 'a', variable_code: 'age_years', value_numeric: 60, value_text: null, is_missing: false }, { patient_id: 'a', variable_code: 'sex', value_numeric: null, value_text: 'F', is_missing: false }, { patient_id: 'b', variable_code: 'sex', value_numeric: null, value_text: 'M', is_missing: false }],
+      reviewedVisitIds: ['va'], today: '2026-11-06',
+    });
+    expect(r.cohort).toMatchObject({ included: 2, womenPct: 50, sexN: 2, byPriority: { 1: 0, 2: 1, 3: 0, none: 1 } });
+    expect(r.evolution).toMatchObject({ improved: 1, stable: 0, worsened: 0 });
+    expect(r.followup.stages.map((x) => x.done)).toEqual([2, 1, 0, 0, 0]);
+    expect(r.followup.without90).toBe(1);
+    expect(r.activity).toMatchObject({ total: 1, perPatient: 0.5, byDomain: { capacity: 0, motivation: 1, opportunity: 0 } });
+    expect(r.upcoming.map((v) => v.id)).toEqual(['vb2']);
+    expect(r.quality).toEqual({ basalWithoutStrat: 1, pendingValidation: 0, doneNotClosed: 2, medicationNotReviewed: 2 });
+  });
+});

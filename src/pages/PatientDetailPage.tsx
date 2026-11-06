@@ -4,11 +4,10 @@ import { Link, useParams } from 'react-router-dom';
 import { ErrorState } from '../components/common/ErrorState';
 import { LoadingState } from '../components/ui/LoadingState';
 import { Notice } from '../components/ui/Notice';
-import { PageHeader } from '../components/ui/PageHeader';
 import { SaveStatus } from '../components/ui/SaveStatus';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { pairIexpac } from '../domain/iexpac';
-import { effectivePriority, PRIORITY_LABELS, VALIDATION_LABELS } from '../domain/cmoLabels';
+import { effectivePriority } from '../domain/cmoLabels';
 import { WINDOW_STATUS_LABELS, isOverdue, type WindowStatus } from '../domain/schedule';
 import {
   INCLUSION_BLOCKER_LABELS, MODALITY_LABELS, PATIENT_STATUS_LABELS, PROGRAMMED_VISITS, RECORD_STATE_LABELS, ROLE_CAN,
@@ -23,6 +22,10 @@ import {
   type Patient, type Profile, type Stratification, type Treatment, type TreatmentEvent, type Visit, type VisitWindow,
 } from '../services/carmoData';
 import { MedicationPanel } from './MedicationPanel';
+import { PatientHeader } from '../components/ui/PatientHeader';
+import { CmoLevelBadge } from '../components/ui/CmoLevelBadge';
+import { currentPriorityByPatient, demographicsByPatient, followUpStatus, lastVisitDate, SEX_LABELS } from '../domain/cohort';
+import { currentObservations } from '../domain/observations';
 import { AuditHistory } from './AuditHistory';
 import { computePending, PENDING_KIND_LABELS } from '../domain/pending';
 import { completeness, REQ_STATUS_LABELS, visitRequirements, type Requirement, type SectionKey } from '../domain/visitRequirements';
@@ -69,20 +72,40 @@ export function PatientDetailPage() {
   const iexB = data.administrations.find((a) => a.instrument_code === 'IEXPAC' && data.visits.find((v) => v.id === a.visit_id)?.visit_code === 'BASAL');
   const iexF = data.administrations.find((a) => a.instrument_code === 'IEXPAC' && data.visits.find((v) => v.id === a.visit_id)?.visit_code === 'FINAL');
   const paired = pairIexpac(iexB?.scores?.global, iexF?.scores?.global);
-  const pendingVisits = data.visits.filter((v) => isOverdue(v.planned_date, v.status, todayIso())).length;
+
+  const demo = demographicsByPatient(currentObservations(data.observations)).get(patient.id);
+  const prio = currentPriorityByPatient(data.strats).get(patient.id) ?? null;
+  const fu = followUpStatus(patient.status, data.visits, todayIso());
+  const lastDone = lastVisitDate(data.visits);
+  const activeConsent = data.consents.find((c) => c.status === 'signed');
+  const withdrawnConsent = data.consents.find((c) => c.status === 'withdrawn');
+  const inStudy = patient.status !== 'screening' && patient.status !== 'not_included';
+  const clinical = ROLE_CAN.readClinical(session.role);
+  const lastDoneVisit = [...data.visits].filter((v) => v.status === 'done' && v.actual_date).sort((x, y) => (y.actual_date ?? '').localeCompare(x.actual_date ?? ''))[0];
 
   return (
     <div className="page-stack">
-      <PageHeader eyebrow={`Paciente · ${center?.code ?? ''}`} title={patientCode(patient)}
-        description={<>{label(PATIENT_STATUS_LABELS, patient.status)} · cribado {fmtDate(patient.screening_date)} · inclusión {fmtDate(patient.inclusion_date)}{' '}
-          {patient.is_synthetic ? <StatusBadge tone="warning">Dato sintético</StatusBadge> : null}</>} />
-      <section className="carmo-kpis" aria-label="Resumen del paciente">
-        <div className="carmo-kpi"><span>Estado</span><strong style={{ fontSize: '1rem' }}>{label(PATIENT_STATUS_LABELS, patient.status)}</strong></div>
-        <div className="carmo-kpi"><span>Prioridad CMO</span><strong style={{ fontSize: '1rem' }}>{data.currentStrat ? PRIORITY_LABELS[effectivePriority(data.currentStrat)] : 'Sin estratificar'}</strong>
-          <small>{data.currentStrat ? `${data.currentStrat.total_score} puntos · ${VALIDATION_LABELS[data.currentStrat.validation_status]}` : ''}{ROLE_CAN.readClinical(session.role) && patient.status !== 'screening' && patient.status !== 'not_included' ? <> · <Link to={`/patients/${patient.id}/stratification`}>Estratificación</Link></> : null}</small></div>
-        <div className="carmo-kpi"><span>IEXPAC basal → final</span><strong style={{ fontSize: '1rem' }}>{fmtNum(paired.baseline)} → {fmtNum(paired.final)}</strong><small>{paired.paired ? `Diferencia ${fmtNum(paired.difference)}` : 'Sin par completo'}</small></div>
-        <div className="carmo-kpi"><span>Visitas previstas vencidas</span><strong>{pendingVisits}</strong></div>
-      </section>
+      <PatientHeader
+        eyebrow="CARMO · Ficha de paciente"
+        code={patientCode(patient)}
+        demographics={[demo?.sex ? SEX_LABELS[demo.sex] ?? demo.sex : null, typeof demo?.age === 'number' ? `${demo.age} años` : null].filter((x): x is string => Boolean(x))}
+        priority={prio?.priority ?? null} score={prio?.score ?? null} priorityPending={prio?.pending}
+        lastVisitDate={lastDone ? fmtDate(lastDone) : null}
+        followup={fu}
+        details={[
+          { label: 'Centro', value: center ? `${center.code} · ${center.name}` : '—' },
+          { label: 'Estado en el estudio', value: label(PATIENT_STATUS_LABELS, patient.status) },
+          { label: 'Inclusión', value: patient.inclusion_date ? fmtDate(patient.inclusion_date) : `cribado ${fmtDate(patient.screening_date)}` },
+          ...(clinical ? [{ label: 'Consentimiento', value: activeConsent ? <StatusBadge tone="positive">Vigente</StatusBadge> : withdrawnConsent ? <StatusBadge tone="warning">Retirado</StatusBadge> : <StatusBadge tone="warning">No registrado</StatusBadge> }] : []),
+          { label: 'IEXPAC basal → final', value: <>{fmtNum(paired.baseline)} → {fmtNum(paired.final)}{paired.paired ? ` (Δ ${fmtNum(paired.difference)})` : ''}</> },
+          ...(patient.is_synthetic ? [{ label: 'Tipo de dato', value: <StatusBadge tone="warning">Sintético</StatusBadge> }] : []),
+        ]}
+        actions={inStudy ? <>
+          {clinical ? <Link className="button-link" to={`/patients/${patient.id}/stratification`}>Estratificación CMO</Link> : null}
+          {clinical && lastDoneVisit ? <Link className="button-link button-secondary" to={`/visits/${lastDoneVisit.id}/informe`}>Informe de la última visita</Link> : null}
+          <Link className="button-link button-secondary" to={`/agenda?patient=${patient.id}`}>Agenda del paciente</Link>
+        </> : null}
+      />
       {ROLE_CAN.readClinical(session.role) ? <PendingPanel data={data} /> : null}
       {patient.status === 'screening' ? <InclusionSection data={data} session={session} reload={load} /> : null}
       {patient.status !== 'screening' && patient.status !== 'not_included' ? <VisitsSection data={data} session={session} reload={load} /> : null}
@@ -229,7 +252,7 @@ function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSe
                 <span className={v.status === 'done' ? 'timeline-node is-done' : v.status === 'cancelled' || v.status === 'not_done' ? 'timeline-node is-cancelled' : 'timeline-node'} aria-hidden="true" />
                 <Link className="timeline-title" to={`/visits/${v.id}`}>{label(VISIT_LABELS, v.visit_code)}</Link>
                 <span className="timeline-date">{fmtDate(v.actual_date ?? v.planned_date)} · {label(VISIT_STATUS_LABELS, v.status)}</span>
-                <span className="timeline-meta">{s ? <StatusBadge tone="info">{PRIORITY_LABELS[effectivePriority(s)]} · {s.total_score} pts</StatusBadge> : <span className="carmo-hint">Sin estratificar</span>}</span>
+                <span className="timeline-meta">{s ? <CmoLevelBadge level={effectivePriority(s)} score={s.total_score} variant="short" pending={s.validation_status === 'pending'} /> : <span className="carmo-hint">Sin estratificar</span>}</span>
               </li>
             );
           })}
@@ -258,7 +281,7 @@ function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSe
               {clinical && v.status === 'done' ? <>
                 <td>{reqCell(r('variables'), r('variables')?.status === 'done' ? 'Completas' : r('variables')?.status === 'pending' ? 'Faltan' : undefined)}</td>
                 <td>{reqCell(r('medicacion'), r('medicacion')?.status === 'done' ? 'Revisada' : r('medicacion')?.status === 'pending' ? 'Sin revisar' : undefined)}</td>
-                <td>{s ? <span title={r('cmo')?.detail}><StatusBadge tone={s.validation_status === 'pending' ? 'warning' : 'info'}>{s.total_score} pts · P{effectivePriority(s)}</StatusBadge></span> : reqCell(r('cmo'), r('cmo')?.status === 'pending' ? 'Pendiente' : undefined)}</td>
+                <td>{s ? <span title={r('cmo')?.detail}><CmoLevelBadge level={effectivePriority(s)} score={s.total_score} variant="short" pending={s.validation_status === 'pending'} /></span> : reqCell(r('cmo'), r('cmo')?.status === 'pending' ? 'Pendiente' : undefined)}</td>
                 <td>{reqCell(r('cuestionarios'), r('cuestionarios')?.status === 'done' ? 'Completos' : r('cuestionarios')?.status === 'pending' ? 'Pendientes' : undefined)}</td>
                 <td className="num">{nInt}</td>
                 <td><StatusBadge tone={c.done === c.required ? 'positive' : 'neutral'}>{c.done}/{c.required}</StatusBadge></td>
