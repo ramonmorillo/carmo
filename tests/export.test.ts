@@ -45,7 +45,7 @@ function fixture(): Record<string, Record<string, unknown>[]> {
     carmo_treatments: [
       { id: 't1', patient_id: P1, active_ingredient: 'Evolocumab', is_study_lipid_therapy: true, start_date: '2025-06-01', status: 'active', started_before_inclusion: true },
     ],
-    carmo_treatment_events: [], carmo_dispensations: [], carmo_interventions: [], carmo_stratifications: [], carmo_deviations: [],
+    carmo_treatment_events: [], carmo_visit_medication_reviews: [], carmo_dispensations: [], carmo_interventions: [], carmo_stratifications: [], carmo_deviations: [],
   };
 }
 

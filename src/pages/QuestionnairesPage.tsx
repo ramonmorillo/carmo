@@ -35,7 +35,7 @@ export function QuestionnairesPage() {
       <PageHeader eyebrow="Cuestionarios" title="Resultados reportados por pacientes" description="IEXPAC (variable principal), EQ-5D-3L y EVASAF en visita inicial y final; Morisky-Green en inicial, S24 y final. Diferencias solo con ambas mediciones válidas." />
       <section className="card"><h2>Instrumentos</h2>
         <table className="carmo-table"><thead><tr><th>Código</th><th>Versión</th><th>Estado</th><th>Notas</th></tr></thead><tbody>
-          {d.instruments.map((i) => <tr key={i.code}><td>{i.code}</td><td>{i.version}</td><td>{i.status === 'active' ? <StatusBadge tone="positive">Habilitado</StatusBadge> : <StatusBadge tone="warning">{i.status === 'pending_license' ? 'Pendiente de licencia' : 'Pendiente de especificación'}</StatusBadge>}</td><td className="text-muted">{i.notes}</td></tr>)}
+          {d.instruments.filter((i) => i.status !== 'retired').map((i) => <tr key={i.code}><td>{i.code}</td><td>{i.version}</td><td>{i.status === 'active' ? <StatusBadge tone="positive">Habilitado</StatusBadge> : <StatusBadge tone="warning">{i.status === 'pending_license' ? 'Pendiente de licencia' : 'Pendiente de especificación'}</StatusBadge>}</td><td className="text-muted">{i.notes}</td></tr>)}
         </tbody></table></section>
       <section className="card"><h2>IEXPAC por paciente (variable principal)</h2>
         <div className="table-wrap"><table className="carmo-table"><thead><tr><th>Paciente</th><th>Basal</th><th>Final</th><th className="numeric">Diferencia</th></tr></thead><tbody>

@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { ErrorState } from '../components/common/ErrorState';
 import { LoadingState } from '../components/ui/LoadingState';
@@ -19,7 +19,10 @@ export function InterventionsPage() {
   const [d, setD] = useState<{ catalog: InterventionCatalogItem[]; items: Intervention[]; patients: Patient[]; visits: Visit[]; strats: Stratification[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
-  const [f, setF] = useState({ patient_id: '', visit_id: '', catalog_code: '', intervention_date: todayIso(), is_scheduled: 'true', modality: 'in_person', recipient: 'patient', acceptance: 'accepted', reason: '', action_taken: '', outcome: '', followup_status: 'open' });
+  // Desde la ficha de visita se llega con ?patient=…&visit=… (registro de la actuación en esa visita).
+  const [params] = useSearchParams();
+  const fromVisit = params.get('visit');
+  const [f, setF] = useState({ patient_id: params.get('patient') ?? '', visit_id: fromVisit ?? '', catalog_code: '', intervention_date: todayIso(), is_scheduled: 'true', modality: 'in_person', recipient: 'patient', acceptance: 'accepted', reason: '', action_taken: '', outcome: '', followup_status: 'open' });
   const load = useCallback(async () => {
     try {
       const [catalog, items, patients, visits, strats] = await Promise.all([carmo.interventionCatalog(), carmo.interventions(), carmo.patients(), carmo.visits(), carmo.stratifications()]);
@@ -53,6 +56,7 @@ export function InterventionsPage() {
   return (
     <div className="page-stack">
       <PageHeader eyebrow="Intervenciones" title="Actuaciones de Atención Farmacéutica" description="Catálogo del modelo CMO cardiovascular (Tablas 5-7, acumulativas por prioridad) más la entrevista motivacional y el seguimiento a distancia. Programadas o no programadas; presenciales o telemáticas." />
+      {fromVisit ? <p><Link to={`/visits/${fromVisit}?seccion=intervenciones`}>← Volver a la visita</Link></p> : null}
       {ROLE_CAN.writeClinical(session.role) ? (
         <section className="card"><h2>Registrar intervención</h2>
           <form className="carmo-form" onSubmit={submit}>

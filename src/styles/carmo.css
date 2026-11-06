@@ -70,3 +70,41 @@
 .timeline-point-5 { animation-delay: .48s; }
 .hero-actions .button-secondary { background: transparent; }
 .hero-actions .button-secondary:hover { background: rgba(255, 255, 255, .08); }
+
+/* Búsqueda en CIMA */
+.carmo-cima-results { list-style: none; margin: var(--sp-2) 0 0; padding: 0; display: grid; gap: var(--sp-2); max-height: 26rem; overflow-y: auto; }
+.carmo-cima-option { width: 100%; text-align: left; display: grid; gap: 2px; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--iris-border); border-radius: 8px; background: var(--iris-surface); color: var(--iris-text); cursor: pointer; font: inherit; }
+.carmo-cima-option:hover, .carmo-cima-option:focus-visible { border-color: var(--iris-teal-700); background: var(--iris-teal-50, #eef7f6); }
+.carmo-cima-option span { font-size: var(--fs-sm); color: var(--iris-text-secondary); }
+
+/* Visita organizada por bloques (como IRIS) */
+.carmo-checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.carmo-checklist li { display: grid; grid-template-columns: 1.75rem 12rem 1fr auto; gap: var(--sp-3); align-items: baseline; padding: var(--sp-2) 0; border-bottom: 1px solid var(--iris-divider); }
+.carmo-checklist li:last-child { border-bottom: 0; }
+.carmo-check { font-weight: 700; text-align: center; }
+.carmo-check-done { color: var(--iris-teal-700); }
+.carmo-check-pending { color: #b42318; }
+.carmo-check-recommended { color: #b54708; }
+.carmo-check-optional, .carmo-check-not_applicable { color: var(--iris-muted); }
+.carmo-tabs { display: flex; flex-wrap: wrap; gap: var(--sp-1); border-bottom: 1px solid var(--iris-border); margin-bottom: var(--sp-4); }
+.carmo-tab { display: inline-flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 0; border-bottom: 3px solid transparent; background: none; font: inherit; font-size: var(--fs-sm); font-weight: 600; color: var(--iris-text-secondary); cursor: pointer; }
+.carmo-tab[aria-selected="true"] { color: var(--iris-teal-800); border-bottom-color: var(--iris-teal-700); }
+.carmo-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--iris-border-strong); }
+.carmo-dot-done { background: var(--iris-teal-700); }
+.carmo-dot-pending { background: #d92d20; }
+.carmo-dot-recommended { background: #f79009; }
+@media (max-width: 720px) {
+  .carmo-checklist li { grid-template-columns: 1.5rem 1fr; }
+  .carmo-checklist li > :nth-child(3), .carmo-checklist li > :nth-child(4) { grid-column: 2; }
+}
+
+/* Barra superior: con 10 apartados no cabe en una fila por debajo de ~1480 px; pasa a dos filas. */
+@media (max-width: 1480px) {
+  .topbar-inner { display: grid; grid-template-columns: auto 1fr; gap: 0 var(--sp-3); padding-top: var(--sp-2); }
+  .topbar-meta { justify-self: end; }
+  .main-nav { grid-column: 1 / -1; grid-row: 2; overflow-x: auto; min-height: 44px; }
+  .brand-subtitle { display: none; }
+}
+.carmo-longitudinal-actions { margin-bottom: var(--sp-4); }
+.carmo-cima-option { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; }
+.carmo-cima-option .status-badge, .carmo-cima-option strong + span { width: auto; }

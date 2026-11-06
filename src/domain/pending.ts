@@ -3,7 +3,7 @@
 // ficha del paciente y la página de calidad de datos. No modifica nada; solo informa.
 import { currentObservations } from './observations';
 
-export type PendingKind = 'missing_data' | 'questionnaire' | 'stratification' | 'overdue' | 'to_close' | 'deviation';
+export type PendingKind = 'missing_data' | 'medication' | 'questionnaire' | 'stratification' | 'overdue' | 'to_close' | 'deviation';
 export type PendingItem = { kind: PendingKind; severity: 'high' | 'medium' | 'low'; visitId: string | null; message: string };
 
 type Visit = { id: string; visit_code: string; status: string; planned_date: string | null; record_state: string };
@@ -17,6 +17,7 @@ type FollowUp = Record<string, { restratifyMonths: number | null }>;
 
 export const PENDING_KIND_LABELS: Record<PendingKind, string> = {
   missing_data: 'Variables sin registrar',
+  medication: 'Medicación sin revisar',
   questionnaire: 'Cuestionarios',
   stratification: 'Estratificación CMO',
   overdue: 'Visitas vencidas',
@@ -54,6 +55,8 @@ export function computePending(input: {
   deviations: Deviation[];
   followUp: FollowUp | null;
   today: string;
+  /** Visitas con la medicación revisada (migración 09). Si se omite, no se evalúa este bloque. */
+  medicationReviewedVisitIds?: string[];
 }): PendingItem[] {
   const items: PendingItem[] = [];
   if (!['included', 'completed', 'withdrawn', 'lost_to_followup'].includes(input.patientStatus)) return items;
@@ -74,6 +77,9 @@ export function computePending(input: {
     const missing = expectedVariables(input.variables, v.visit_code, tobacco).filter((x) => !recorded.has(x.code));
     if (missing.length) {
       items.push({ kind: 'missing_data', severity: 'high', visitId: v.id, message: `${name}: ${missing.length} variable(s) sin registrar (${missing.map((m) => m.label).join(', ')})` });
+    }
+    if (input.medicationReviewedVisitIds && v.visit_code !== 'EXTRA' && !input.medicationReviewedVisitIds.includes(v.id)) {
+      items.push({ kind: 'medication', severity: 'high', visitId: v.id, message: `${name}: medicación sin revisar (seleccionando los medicamentos en CIMA)` });
     }
     for (const inst of input.instruments.filter((i) => i.status === 'active' && i.allowed_visits.includes(v.visit_code))) {
       const a = input.administrations.find((x) => x.visit_id === v.id && x.instrument_code === inst.code);

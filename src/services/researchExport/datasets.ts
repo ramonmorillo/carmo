@@ -65,11 +65,19 @@ const RAW_TABLES = {
     ['is_study_lipid_therapy', 'boolean', 'Tratamiento hipolipemiante principal del estudio'], ['presentation', 'string', 'Presentación'],
     ['dose_amount', 'decimal', 'Dosis vigente'], ['dose_unit', 'string', 'Unidad de dosis'], ['frequency', 'string', 'Frecuencia'], ['route', 'string', 'Vía'],
     ['start_date', 'date', 'Inicio'], ['end_date', 'date', 'Fin'], ['status', 'string', 'Estado'], ['started_before_inclusion', 'boolean', 'Iniciado antes de la inclusión'],
+    ['cima_nregistro', 'string', 'N.º de registro en CIMA'], ['cima_cn', 'string', 'Código nacional (CIMA)'], ['cima_name', 'string', 'Medicamento (CIMA)'],
+    ['atc_code', 'string', 'Código ATC'], ['pharmaceutical_form', 'string', 'Forma farmacéutica (CIMA)'], ['frequency_code', 'string', 'Pauta (código)'],
+    ['visit_id', 'string', 'Visita de registro (id)'],
+  ] as RawCol[] },
+  medicationReviews: { table: 'carmo_visit_medication_reviews', key: 'visit_id', title: 'Revisión de la medicación por visita', grain: 'visita', cols: [
+    ['visit_id', 'string', 'Id de visita'], ['patient_id', 'string', 'Paciente (id)'],
+    ['outcome', 'string', 'Resultado de la revisión', { no_changes: 'Sin cambios', changes_recorded: 'Con cambios registrados', no_medication: 'Sin medicación' }],
+    ['active_medication_count', 'integer', 'Medicamentos vigentes en la revisión (BD)'], ['revision', 'integer', 'Revisión'], ['reviewed_at', 'datetime', 'Revisada'],
   ] as RawCol[] },
   treatmentEvents: { table: 'carmo_treatment_events', title: 'Historial de tratamiento', grain: 'evento de tratamiento', cols: [
     ['id', 'string', 'Id'], ['treatment_id', 'string', 'Tratamiento (id)'], ['patient_id', 'string', 'Paciente (id)'], ['visit_id', 'string', 'Visita (id)'],
     ['event_type', 'string', 'Tipo de evento'], ['event_date', 'date', 'Fecha'], ['new_dose_amount', 'decimal', 'Nueva dosis'], ['new_dose_unit', 'string', 'Unidad'],
-    ['new_frequency', 'string', 'Nueva frecuencia'], ['reason', 'string', 'Motivo'], ['adverse_reaction_description', 'string', 'Reacción adversa'],
+    ['new_frequency', 'string', 'Nueva frecuencia'], ['new_frequency_code', 'string', 'Nueva pauta (código)'], ['reason', 'string', 'Motivo'], ['adverse_reaction_description', 'string', 'Reacción adversa'],
   ] as RawCol[] },
   dispensations: { table: 'carmo_dispensations', title: 'Dispensaciones', grain: 'dispensación', cols: [
     ['id', 'string', 'Id'], ['treatment_id', 'string', 'Tratamiento (id)'], ['patient_id', 'string', 'Paciente (id)'], ['dispensed_date', 'date', 'Fecha'],
@@ -102,7 +110,8 @@ export const TABLE_REQUESTS = Object.fromEntries(
 
 /** Columnas no exportadas (minimización): texto libre con riesgo de identificadores y autoría nominal. */
 export const EXCLUDED_COLUMNS: Array<{ table: string; columns: string; reason: string }> = [
-  { table: 'carmo_visit_evolutions', columns: 'todas', reason: 'Texto libre clínico: riesgo de identificadores directos. Exportación pendiente de decisión (RG-14).' },
+  { table: 'carmo_visit_evolutions', columns: 'todas', reason: 'Texto libre clínico: riesgo de identificadores directos. Exportación pendiente de decisión (RG-14). El PRM se retiró de la herramienta el 06/11/2026.' },
+  { table: 'carmo_treatments', columns: 'cima_snapshot', reason: 'Copia técnica de CIMA para trazabilidad; los campos útiles ya se exportan por separado.' },
   { table: 'carmo_deviations', columns: 'description, resolution', reason: 'Texto libre: riesgo de identificadores.' },
   { table: 'carmo_interventions', columns: 'reason, action_taken, outcome', reason: 'Texto libre: riesgo de identificadores.' },
   { table: '(todas)', columns: 'created_by, recorded_by, evaluator_id, assessed_by, investigator_id', reason: 'Identificadores de profesionales: no necesarios para el análisis.' },

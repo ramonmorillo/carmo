@@ -26,6 +26,17 @@ describe('variables esperadas por visita', () => {
 });
 
 describe('datos pendientes del paciente', () => {
+  it('medicación sin revisar en visitas programadas realizadas (no en contactos extraordinarios)', () => {
+    const visits = [
+      { id: 'b', visit_code: 'BASAL', status: 'done', planned_date: '2026-10-01', record_state: 'closed' },
+      { id: 'x', visit_code: 'EXTRA', status: 'done', planned_date: '2026-10-10', record_state: 'closed' },
+    ];
+    const args = { ...base, variables: [], instruments: [], patientStatus: 'included', visits, observations: [], administrations: [],
+      stratifications: [{ id: 's', visit_id: 'b', supersedes_id: null, validation_status: 'confirmed', calculated_priority: 3, final_priority: 3, calculated_at: '2026-10-01', validated_at: '2026-10-01' }] };
+    expect(computePending({ ...args, medicationReviewedVisitIds: [] }).map((i) => [i.kind, i.visitId])).toEqual([['medication', 'b']]);
+    expect(computePending({ ...args, medicationReviewedVisitIds: ['b'] })).toEqual([]);
+    expect(computePending(args)).toEqual([]);
+  });
   it('candidato en cribado: nada pendiente aquí (lo gestiona la inclusión)', () => {
     expect(computePending({ ...base, patientStatus: 'screening', visits: [], observations: [], administrations: [], stratifications: [] })).toEqual([]);
   });
