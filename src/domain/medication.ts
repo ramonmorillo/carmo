@@ -138,3 +138,19 @@ export function chronicActiveIngredients(treatments: CountableTreatment[]): stri
   }
   return [...names].sort();
 }
+
+/**
+ * Medicación vigente en una fecha (para el informe de una visita pasada): iniciada ese día o antes y no
+ * finalizada antes de ese día. El estado de suspensión se toma de los eventos hasta esa fecha.
+ */
+export function medicationAtDate<T extends { id: string; start_date: string; end_date: string | null }>(
+  treatments: T[], events: Array<{ treatment_id: string; event_type: string; event_date: string }>, date: string,
+): Array<T & { suspendedAtDate: boolean }> {
+  return treatments
+    .filter((t) => t.start_date <= date && (t.end_date === null || t.end_date >= date))
+    .map((t) => {
+      const last = events.filter((e) => e.treatment_id === t.id && e.event_date <= date && (e.event_type === 'suspension' || e.event_type === 'restart'))
+        .sort((a, b) => a.event_date.localeCompare(b.event_date)).pop();
+      return { ...t, suspendedAtDate: last?.event_type === 'suspension' };
+    });
+}

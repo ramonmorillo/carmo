@@ -79,3 +79,23 @@ describe('polimedicación para el modelo CMO', () => {
     expect(list).toEqual(['enalapril', 'evolocumab', 'ezetimiba', 'rosuvastatina']);
   });
 });
+
+describe('medicación vigente en la fecha de una visita', () => {
+  it('incluye lo iniciado antes y no finalizado; marca la suspensión vigente en esa fecha', async () => {
+    const { medicationAtDate } = await import('../src/domain/medication');
+    const trts = [
+      { id: 'a', start_date: '2026-01-01', end_date: null },
+      { id: 'b', start_date: '2026-03-01', end_date: null },
+      { id: 'c', start_date: '2025-06-01', end_date: '2026-01-15' },
+      { id: 'd', start_date: '2025-06-01', end_date: '2026-02-01' },
+    ];
+    const evts = [
+      { treatment_id: 'a', event_type: 'suspension', event_date: '2026-01-20' },
+      { treatment_id: 'a', event_type: 'restart', event_date: '2026-02-10' },
+    ];
+    const at = (d: string) => medicationAtDate(trts, evts, d).map((t) => `${t.id}${t.suspendedAtDate ? '(s)' : ''}`);
+    expect(at('2026-02-01')).toEqual(['a(s)', 'd']);
+    expect(at('2026-02-15')).toEqual(['a']);
+    expect(at('2026-03-01')).toEqual(['a', 'b']);
+  });
+});
