@@ -14,7 +14,7 @@ const instruments = [
 const base = { id: 'v1', visit_code: 'BASAL', status: 'done', actual_date: '2026-10-01', planned_date: '2026-10-01', modality: 'in_person', responsible_id: 'u', record_state: 'draft' };
 const ctx = (over: Partial<VisitContext> = {}): VisitContext => ({
   variables: vars, observations: [], administrations: [], instruments, stratifications: [], interventionCount: 0, review: null,
-  followUp: { 1: { restratifyMonths: 6 }, 2: { restratifyMonths: 12 }, 3: { restratifyMonths: null } }, today: '2026-11-06', ...over,
+  followUp: { 1: { restratifyMonths: 6 }, 2: { restratifyMonths: 12 }, 3: { restratifyMonths: null } }, today: '2026-11-06', cmoAvailable: true, ...over,
 });
 const obs = (code: string, visit = 'v1') => ({ id: `${code}-${visit}`, supersedes_id: null, visit_id: visit, variable_code: code, value_boolean: null, is_missing: false });
 const by = (r: ReturnType<typeof visitRequirements>, k: string) => r.find((x) => x.key === k)!;
@@ -61,6 +61,11 @@ describe('lo necesario en cada visita', () => {
   it('datos de la visita: exige fecha efectiva, modalidad y responsable', () => {
     expect(by(visitRequirements({ ...base, modality: null, responsible_id: null }, ctx()), 'datos').detail).toBe('Falta: modalidad, profesional responsable.');
     expect(by(visitRequirements({ ...base, status: 'planned', actual_date: null }, ctx()), 'datos').detail).toContain('estado «realizada»');
+  });
+  it('sin modelo CMO validado, la estratificación no se exige (como en la BD)', () => {
+    const r = visitRequirements(base, ctx({ cmoAvailable: false }));
+    expect(by(r, 'cmo').status).toBe('not_applicable');
+    expect(blockingBeforeClose(r).map((x) => x.key)).not.toContain('cmo');
   });
   it('estratificación vigente en una fecha', () => {
     const a = { id: 'a', visit_id: 'v', supersedes_id: null, validation_status: 'confirmed', calculated_priority: 3, final_priority: null, total_score: 10, calculated_at: '2026-01-01T00:00:00Z', validated_at: null };
