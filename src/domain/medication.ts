@@ -117,3 +117,24 @@ export function treatmentPayload(dto: CimaDto, form: TreatmentForm, patientId: s
 export function currentTreatments<T extends { status: string }>(treatments: T[]): T[] {
   return treatments.filter((t) => t.status === 'active' || t.status === 'suspended');
 }
+
+type CountableTreatment = { status: string; active_ingredient: string; frequency_code: string | null; cima_snapshot?: { principios_activos?: unknown } | null };
+
+/**
+ * Principios activos concurrentes y crónicos (variable «polimedicación» del modelo CMO): principios activos
+ * distintos de los tratamientos ACTIVOS, sin pautas a demanda ni dosis únicas. Una combinación cuenta cada
+ * principio activo. Los registros previos sin CIMA cuentan por su principio activo escrito.
+ */
+export function chronicActiveIngredients(treatments: CountableTreatment[]): string[] {
+  const names = new Set<string>();
+  for (const t of treatments) {
+    if (t.status !== 'active' || t.frequency_code === 'prn' || t.frequency_code === 'single') continue;
+    const fromCima = t.cima_snapshot?.principios_activos;
+    const list = Array.isArray(fromCima) && fromCima.length ? fromCima.map(String) : t.active_ingredient.split(' + ');
+    for (const n of list) {
+      const key = stripAccents(n).toLowerCase().replace(/\s+/g, ' ').trim();
+      if (key) names.add(key);
+    }
+  }
+  return [...names].sort();
+}

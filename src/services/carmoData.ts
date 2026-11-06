@@ -43,7 +43,7 @@ export type Treatment = {
   id: string; patient_id: string; active_ingredient: string; is_study_lipid_therapy: boolean; presentation: string | null; dose_amount: number | null; dose_unit: string | null;
   frequency: string | null; route: string | null; start_date: string; end_date: string | null; status: string; started_before_inclusion: boolean;
   cima_nregistro: string | null; cima_cn: string | null; cima_name: string | null; atc_code: string | null; pharmaceutical_form: string | null;
-  frequency_code: string | null; visit_id: string | null;
+  frequency_code: string | null; visit_id: string | null; cima_snapshot: { principios_activos?: string[] } | null;
 };
 export type MedicationReview = { visit_id: string; patient_id: string; outcome: string; active_medication_count: number; revision: number; reviewed_at: string };
 export type TreatmentEvent = { id: string; treatment_id: string; visit_id: string | null; event_type: string; event_date: string; new_dose_amount: number | null; new_dose_unit: string | null; new_frequency: string | null; reason: string | null; adverse_reaction_description: string | null };

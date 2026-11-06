@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validación de la ruta CSV + sintaxis SPSS (.sps) de la exportación de COAMO.
+"""Validación de la ruta CSV + sintaxis SPSS (.sps) de la exportación de CARMO (origen: COAMO).
 
 Para cada .sps de un paquete de exportación descomprimido:
   1. lo ejecuta con GNU PSPP (clon libre de SPSS) añadiendo SAVE OUTFILE;

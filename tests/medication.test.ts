@@ -62,3 +62,20 @@ describe('medicamento de CIMA → registro de CARMO', () => {
     expect(() => treatmentPayload(repatha, { dose_amount: '1', dose_unit: 'mg', frequency_code: 'cada tanto', route: 'oral', start_date: 'x' }, 'p', null)).toThrow(/pauta/);
   });
 });
+
+describe('polimedicación para el modelo CMO', () => {
+  const t = (over: Record<string, unknown>) => ({ status: 'active', active_ingredient: 'X', frequency_code: 'q24h', cima_snapshot: null, ...over });
+  it('cuenta principios activos distintos de tratamientos activos y crónicos', async () => {
+    const { chronicActiveIngredients } = await import('../src/domain/medication');
+    const list = chronicActiveIngredients([
+      t({ active_ingredient: 'EZETIMIBA + ROSUVASTATINA', cima_snapshot: { principios_activos: ['EZETIMIBA', 'ROSUVASTATINA'] } }),
+      t({ active_ingredient: 'Evolocumab', cima_snapshot: { principios_activos: ['EVOLOCUMAB'] }, frequency_code: 'q2w' }),
+      t({ active_ingredient: 'ROSUVASTATINA', cima_snapshot: { principios_activos: ['Rosuvastatina'] } }),
+      t({ active_ingredient: 'NITROGLICERINA', frequency_code: 'prn' }),
+      t({ active_ingredient: 'ÁCIDO ACETILSALICÍLICO', status: 'suspended' }),
+      t({ active_ingredient: 'Atorvastatina', status: 'finished' }),
+      t({ active_ingredient: 'Enalapril', frequency_code: null }),
+    ]);
+    expect(list).toEqual(['enalapril', 'evolocumab', 'ezetimiba', 'rosuvastatina']);
+  });
+});
