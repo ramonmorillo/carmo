@@ -154,3 +154,35 @@ export function medicationAtDate<T extends { id: string; start_date: string; end
       return { ...t, suspendedAtDate: last?.event_type === 'suspension' };
     });
 }
+
+type DoseEvent = {
+  treatment_id: string; event_type: string; event_date: string; recorded_at?: string | null;
+  new_dose_amount: number | null; new_dose_unit: string | null; new_frequency: string | null;
+};
+export type DoseAt = { amount: number | null; unit: string | null; frequency: string | null; exact: boolean };
+
+/**
+ * Dosis, unidad y pauta vigentes en una fecha (migración 11): parte del evento «start» (dosis inicial) y
+ * aplica en orden los «dose_change» de esa fecha o anteriores. Si el inicio no guardó la dosis (registros
+ * previos a la migración 11 con cambios), solo es exacta cuando no hubo cambios después de la fecha.
+ */
+export function doseAtDate(
+  treatment: { id: string; dose_amount: number | null; dose_unit: string | null; frequency: string | null },
+  events: DoseEvent[], date: string,
+): DoseAt {
+  const own = events.filter((e) => e.treatment_id === treatment.id && (e.event_type === 'start' || e.event_type === 'dose_change'))
+    .sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.event_type === 'start' ? -1 : b.event_type === 'start' ? 1 : 0)
+      || (a.recorded_at ?? '').localeCompare(b.recorded_at ?? ''));
+  const start = own.find((e) => e.event_type === 'start');
+  const changesAfter = own.some((e) => e.event_type === 'dose_change' && e.event_date > date);
+  const startKnown = Boolean(start && (start.new_dose_amount !== null || start.new_dose_unit !== null || start.new_frequency !== null));
+  if (!startKnown) {
+    return { amount: treatment.dose_amount, unit: treatment.dose_unit, frequency: treatment.frequency, exact: !changesAfter };
+  }
+  let state: DoseAt = { amount: start!.new_dose_amount, unit: start!.new_dose_unit, frequency: start!.new_frequency, exact: true };
+  for (const e of own) {
+    if (e.event_type !== 'dose_change' || e.event_date > date) continue;
+    state = { amount: e.new_dose_amount ?? state.amount, unit: e.new_dose_unit ?? state.unit, frequency: e.new_frequency ?? state.frequency, exact: true };
+  }
+  return state;
+}

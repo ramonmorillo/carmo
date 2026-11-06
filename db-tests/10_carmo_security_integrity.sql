@@ -414,6 +414,8 @@ select carmo_test.expect_fail($$insert into public.carmo_treatment_events (treat
 insert into public.carmo_treatment_events (treatment_id, event_type, event_date, new_dose_amount, new_frequency_code, reason)
   select id, 'dose_change', current_date, 420, 'monthly', 'Cambio de pauta por preferencia del paciente' from public.carmo_treatments;
 select carmo_test.expect((select frequency_code = 'monthly' and frequency = 'Mensual' from public.carmo_treatments), 'el cambio de pauta actualiza código y etiqueta');
+select carmo_test.expect((select new_dose_amount = 140 and new_dose_unit = 'mg' and new_frequency_code = 'q2w' and new_frequency = 'Cada 2 semanas'
+  from public.carmo_treatment_events where event_type = 'start'), 'el evento de inicio conserva la dosis y la pauta iniciales tras el cambio');
 insert into public.carmo_treatment_events (treatment_id, event_type, event_date, reason) select id, 'suspension', current_date, 'Reacción local' from public.carmo_treatments;
 select carmo_test.expect((select status = 'suspended' and dose_amount = 420 from public.carmo_treatments), 'eventos aplicados: dosis 420 mg y suspendido');
 insert into public.carmo_treatment_events (treatment_id, event_type, event_date, reason) select id, 'end', current_date, 'Fin por decisión clínica' from public.carmo_treatments;

@@ -46,7 +46,7 @@ export type Treatment = {
   frequency_code: string | null; visit_id: string | null; cima_snapshot: { principios_activos?: string[] } | null;
 };
 export type MedicationReview = { visit_id: string; patient_id: string; outcome: string; active_medication_count: number; revision: number; reviewed_at: string };
-export type TreatmentEvent = { id: string; treatment_id: string; visit_id: string | null; event_type: string; event_date: string; new_dose_amount: number | null; new_dose_unit: string | null; new_frequency: string | null; reason: string | null; adverse_reaction_description: string | null };
+export type TreatmentEvent = { id: string; treatment_id: string; visit_id: string | null; recorded_at: string; new_frequency_code: string | null; event_type: string; event_date: string; new_dose_amount: number | null; new_dose_unit: string | null; new_frequency: string | null; reason: string | null; adverse_reaction_description: string | null };
 export type Dispensation = { id: string; treatment_id: string; dispensed_date: string; units_dispensed: number; days_supply: number | null; supersedes_id: string | null };
 export type Evolution = { visit_id: string; clinical_evolution: string | null; pharmacotherapy_update: string | null; motivational_followup: string | null; revision: number };
 export type Deviation = { id: string; patient_id: string; visit_id: string | null; category: string; description: string; detected_date: string; status: string };

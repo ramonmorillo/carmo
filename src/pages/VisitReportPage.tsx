@@ -11,7 +11,7 @@ import { PROJECT_IDENTITY, PROJECT_INSTITUTIONAL_REFERENCE } from '../constants/
 import { ACCEPTANCE_LABELS, PRIORITY_LABELS, RECIPIENT_LABELS, VALIDATION_LABELS } from '../domain/cmoLabels';
 import { currentObservations } from '../domain/observations';
 import { storedScoreLabel } from '../domain/questionnaires';
-import { medicationAtDate, REVIEW_OUTCOME_LABELS, ROUTE_LABELS, TREATMENT_EVENT_LABELS } from '../domain/medication';
+import { doseAtDate, medicationAtDate, REVIEW_OUTCOME_LABELS, ROUTE_LABELS, TREATMENT_EVENT_LABELS } from '../domain/medication';
 import {
   DATA_SOURCE_LABELS, MISSING_REASON_LABELS, MODALITY_LABELS, RECORD_STATE_LABELS, ROLE_CAN, TEMPORAL_CONTEXT_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS, patientCode,
 } from '../domain/study';
@@ -90,7 +90,7 @@ export function VisitReportPage() {
 
   // Medicación vigente en la fecha de la visita y cambios registrados en ella.
   const meds = medicationAtDate(data.treatments, data.events, date).sort((a, b) => Number(b.is_study_lipid_therapy) - Number(a.is_study_lipid_therapy) || a.active_ingredient.localeCompare(b.active_ingredient, 'es'));
-  const laterDoseChange = (tid: string) => data.events.some((e) => e.treatment_id === tid && e.event_type === 'dose_change' && e.event_date > date);
+  const doseOf = (t: Treatment) => doseAtDate(t, data.events, date);
   const visitEvents = data.events.filter((e) => e.visit_id === visit.id).sort((a, b) => a.event_date.localeCompare(b.event_date));
   const trtName = (id: string) => { const t = data.treatments.find((x) => x.id === id); return t?.cima_name ?? t?.active_ingredient ?? '—'; };
 
@@ -167,7 +167,7 @@ export function VisitReportPage() {
               {meds.map((t) => <tr key={t.id}>
                 <td>{t.cima_name ?? t.presentation ?? t.active_ingredient}{t.is_study_lipid_therapy ? ' · tratamiento principal del estudio' : ''}{t.cima_nregistro ? <><br />N.º registro {t.cima_nregistro}{t.cima_cn ? ` · CN ${t.cima_cn}` : ''}</> : null}</td>
                 <td>{t.active_ingredient}{t.atc_code ? ` · ${t.atc_code}` : ''}</td>
-                <td>{t.dose_amount ?? '—'} {t.dose_unit ?? ''} · {t.frequency ?? '—'}{laterDoseChange(t.id) ? <><br /><em>Dosis actual: hubo cambios posteriores a la visita</em></> : null}</td>
+                {(() => { const d = doseOf(t); return <td>{d.amount ?? '—'} {d.unit ?? ''} · {d.frequency ?? '—'}{d.exact ? null : <><br /><em>Dosis actual: la dosis inicial no consta (registro anterior al 06/11/2026) y hubo cambios posteriores a la visita</em></>}</td>; })()}
                 <td>{label(ROUTE_LABELS, t.route)}</td><td>{fmtDate(t.start_date)}</td><td>{t.suspendedAtDate ? 'Suspendido' : 'Activo'}</td>
               </tr>)}
             </tbody></table>

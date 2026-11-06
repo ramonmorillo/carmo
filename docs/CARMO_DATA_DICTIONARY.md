@@ -94,6 +94,7 @@ Cada observación lleva: valor tipado, unidad, `observed_date`, `data_source`, `
 | Visita en la que se registra el medicamento | `carmo_treatments.visit_id`; el evento de inicio hereda la visita | IMPL |
 | Revisión de la medicación en cada visita (sin cambios / con cambios / sin medicación) | `carmo_visit_medication_reviews` (una por visita; recuento de vigentes calculado por la BD) | IMPL |
 | Modificaciones, motivo, incidencias, RAM | `carmo_treatment_events` | IMPL |
+| Dosis, unidad y pauta iniciales (para reconstruir la dosis de cualquier fecha) | Evento `start` de `carmo_treatment_events` (`new_dose_*`, `new_frequency*`; migración 11) | IMPL |
 | Revisión de la historia farmacoterapéutica (BASAL, FINAL) | Evolución de la visita (`pharmacotherapy_update`) | IMPL |
 | Registro de dispensaciones | `carmo_dispensations` | IMPL |
 | Adherencia por dispensación (tratamiento hospitalario y no hospitalario) | — | **NO-IMPL** (RG-20) |

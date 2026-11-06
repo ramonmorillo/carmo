@@ -99,3 +99,26 @@ describe('medicación vigente en la fecha de una visita', () => {
     expect(at('2026-03-01')).toEqual(['a', 'b']);
   });
 });
+
+describe('dosis vigente en una fecha (informe exacto)', () => {
+  const trt = { id: 't', dose_amount: 420, dose_unit: 'mg', frequency: 'Mensual' };
+  const ev = (type: string, date: string, amount: number | null, unit: string | null, freq: string | null, rec = '2026-01-01T00:00:00Z') =>
+    ({ treatment_id: 't', event_type: type, event_date: date, recorded_at: rec, new_dose_amount: amount, new_dose_unit: unit, new_frequency: freq });
+  it('reconstruye la dosis inicial y cada cambio en su fecha', async () => {
+    const { doseAtDate } = await import('../src/domain/medication');
+    const events = [ev('start', '2026-01-01', 140, 'mg', 'Cada 2 semanas'), ev('dose_change', '2026-04-01', 420, null, 'Mensual')];
+    expect(doseAtDate(trt, events, '2026-02-01')).toEqual({ amount: 140, unit: 'mg', frequency: 'Cada 2 semanas', exact: true });
+    expect(doseAtDate(trt, events, '2026-04-01')).toEqual({ amount: 420, unit: 'mg', frequency: 'Mensual', exact: true });
+  });
+  it('cambio que solo modifica la dosis conserva la pauta anterior; el mismo día se aplica tras el inicio', async () => {
+    const { doseAtDate } = await import('../src/domain/medication');
+    const events = [ev('dose_change', '2026-01-01', 70, null, null, '2026-01-01T10:00:00Z'), ev('start', '2026-01-01', 140, 'mg', 'Cada 2 semanas', '2026-01-01T09:00:00Z')];
+    expect(doseAtDate(trt, events, '2026-01-01')).toEqual({ amount: 70, unit: 'mg', frequency: 'Cada 2 semanas', exact: true });
+  });
+  it('registros previos sin dosis inicial: exacta solo si no hubo cambios posteriores', async () => {
+    const { doseAtDate } = await import('../src/domain/medication');
+    const legacy = [ev('start', '2026-01-01', null, null, null), ev('dose_change', '2026-04-01', 420, 'mg', 'Mensual')];
+    expect(doseAtDate(trt, legacy, '2026-05-01').exact).toBe(true);
+    expect(doseAtDate(trt, legacy, '2026-02-01')).toEqual({ amount: 420, unit: 'mg', frequency: 'Mensual', exact: false });
+  });
+});
