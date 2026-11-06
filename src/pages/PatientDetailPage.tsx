@@ -266,6 +266,7 @@ function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSe
               <td>{label(RECORD_STATE_LABELS, v.record_state)}</td>
               <td><div className="table-actions">
                 {(clinical ? SHORT_LINKS : SHORT_LINKS.filter(([k]) => k === 'datos' || k === 'cuestionarios')).map(([k, t]) => <Link key={k} to={`/visits/${v.id}?seccion=${k}`}>{t}</Link>)}
+                {clinical && v.status === 'done' ? <Link to={`/visits/${v.id}/informe`}>Informe</Link> : null}
               </div></td>
             </tr>
           );

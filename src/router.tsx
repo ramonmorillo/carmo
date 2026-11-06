@@ -17,6 +17,7 @@ import { QuestionnairesPage } from './pages/QuestionnairesPage';
 import { SetPasswordPage } from './pages/SetPasswordPage';
 import { StratificationPage } from './pages/StratificationPage';
 import { VisitPage } from './pages/VisitPage';
+import { VisitReportPage } from './pages/VisitReportPage';
 
 export const router = createHashRouter([
   { path: '/', element: <LoginPage /> },
@@ -33,6 +34,7 @@ export const router = createHashRouter([
       { path: '/patients/:id/stratification', element: <PatientStratificationPage /> },
       { path: '/visits/:visitId', element: <VisitPage /> },
       { path: '/visits/:visitId/questionnaires/:instrument', element: <QuestionnaireFormPage /> },
+      { path: '/visits/:visitId/informe', element: <VisitReportPage /> },
       { path: '/agenda', element: <AgendaPage /> },
       { path: '/questionnaires', element: <QuestionnairesPage /> },
       { path: '/stratification', element: <StratificationPage /> },

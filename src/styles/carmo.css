@@ -108,3 +108,31 @@
 .carmo-longitudinal-actions { margin-bottom: var(--sp-4); }
 .carmo-cima-option { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; }
 .carmo-cima-option .status-badge, .carmo-cima-option strong + span { width: auto; }
+
+/* Informe imprimible de la visita */
+.carmo-report { background: #fff; border: 1px solid var(--iris-border); border-radius: 10px; padding: var(--sp-6); max-width: 60rem; margin: 0 auto; color: #111; }
+.carmo-report header { display: flex; justify-content: space-between; gap: var(--sp-4); border-bottom: 2px solid var(--iris-teal-900); padding-bottom: var(--sp-3); margin-bottom: var(--sp-4); }
+.carmo-report h1 { font-size: 1.35rem; margin: 0; }
+.carmo-report h2 { font-size: 1rem; margin: var(--sp-5) 0 var(--sp-2); padding-bottom: 2px; border-bottom: 1px solid #ccd; break-after: avoid; }
+.carmo-report table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.carmo-report th, .carmo-report td { text-align: left; vertical-align: top; padding: 3px 6px; border-bottom: 1px solid #e3e6ea; }
+.carmo-report th { font-weight: 650; background: #f4f6f8; }
+.carmo-report dl.carmo-report-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--sp-2) var(--sp-4); margin: 0; font-size: 0.85rem; }
+.carmo-report-facts dt { color: #555; font-size: 0.75rem; }
+.carmo-report-facts dd { margin: 0; font-weight: 600; }
+.carmo-report-text { white-space: pre-wrap; font-size: 0.85rem; margin: 0 0 var(--sp-2); }
+.carmo-report-foot { margin-top: var(--sp-6); padding-top: var(--sp-3); border-top: 1px solid #ccd; font-size: 0.75rem; color: #444; display: grid; gap: var(--sp-2); }
+.carmo-report-sign { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); margin-top: var(--sp-5); }
+.carmo-report-sign div { border-top: 1px solid #333; padding-top: 4px; font-size: 0.75rem; }
+.carmo-report header, .carmo-report-facts, .carmo-report-sign { break-inside: avoid; }
+@media print {
+  @page { size: A4; margin: 14mm 12mm; }
+  .carmo-banner, .topbar, .skip-link, .app-footer, .no-print { display: none !important; }
+  html, body, #root, .app-shell, .main-content, .page-stack { background: #fff !important; }
+  .main-content { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: 0 !important; }
+  .page-stack { gap: 0 !important; }
+  .carmo-report h2 { margin-top: 10px; }
+  .carmo-report { border: 0; padding: 0; max-width: none; }
+  .carmo-report tr { break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
