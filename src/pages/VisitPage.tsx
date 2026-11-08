@@ -82,7 +82,7 @@ export function VisitPage() {
     <div className="page-stack">
       <PageHeader eyebrow={<Link to={`/patients/${patient.id}`}>{patientCode(patient)}</Link>} title={label(VISIT_LABELS, visit.visit_code)}
         description={<>Prevista {fmtDate(visit.planned_date)} · efectiva {fmtDate(visit.actual_date)} · {label(VISIT_STATUS_LABELS, visit.status)} · registro <StatusBadge tone={closed ? 'neutral' : 'info'}>{label(RECORD_STATE_LABELS, visit.record_state)}</StatusBadge></>} />
-      {clinical ? <div className="carmo-actions"><Link className="button-secondary" to={`/visits/${visit.id}/informe`}>Informe imprimible de la visita</Link></div> : null}
+      {clinical ? <div className="carmo-actions"><Link className="button-link button-secondary" to={`/visits/${visit.id}/informe`}>Informe imprimible de la visita</Link></div> : null}
       {closed ? <Notice tone="info" title="Visita cerrada">Los datos de esta visita están bloqueados. El IP del centro o la coordinación pueden reabrirla indicando el motivo; la reapertura queda registrada.</Notice> : null}
       {clinical ? <ChecklistCard reqs={reqs} go={go} /> : null}
       <section className="card">
@@ -284,7 +284,7 @@ function VariableRow({ variable: v, visit, patient, current, all, canWrite, relo
   };
 
   return (
-    <div className="carmo-item" style={{ gridTemplateColumns: '14rem 1fr' }}>
+    <div className="carmo-item carmo-var-row">
       <div><strong>{v.label}</strong>{blocked ? <><br /><StatusBadge tone="warning">Bloqueada</StatusBadge></> : null}<p className="carmo-hint">{v.notes}</p></div>
       <div>
         {current.length === 0 ? <span className="text-muted">Sin registrar</span> : current.map((o) => (

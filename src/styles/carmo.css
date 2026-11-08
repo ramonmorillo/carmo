@@ -93,9 +93,12 @@
 .carmo-dot-done { background: var(--iris-teal-700); }
 .carmo-dot-pending { background: #d92d20; }
 .carmo-dot-recommended { background: #f79009; }
+.carmo-checklist li > * { min-width: 0; }
+.carmo-checklist .button-ghost { white-space: normal; text-align: left; }
 @media (max-width: 720px) {
-  .carmo-checklist li { grid-template-columns: 1.5rem 1fr; }
-  .carmo-checklist li > :nth-child(3), .carmo-checklist li > :nth-child(4) { grid-column: 2; }
+  .carmo-checklist li { grid-template-columns: 1.5rem minmax(0, 1fr); gap: var(--sp-1) var(--sp-2); }
+  .carmo-checklist li > :nth-child(3), .carmo-checklist li > :nth-child(4) { grid-column: 2; justify-self: start; }
+  .carmo-longitudinal-actions .button-link, .carmo-actions .button-link { white-space: normal; text-align: left; height: auto; }
 }
 
 /* Barra superior: con 10 apartados no cabe en una fila por debajo de ~1480 px; pasa a dos filas. */
@@ -233,3 +236,6 @@ button.agenda-day.is-selected, button.agenda-day.is-selected:hover:not(:disabled
   .agenda-page .page-header { display: none; }
   .agenda-print-header { justify-content: space-between; border-bottom: 1px solid #000000; padding-bottom: 4px; margin-bottom: 8px; }
 }
+.carmo-var-row { grid-template-columns: 14rem minmax(0, 1fr); }
+.carmo-var-row > * { min-width: 0; }
+@media (max-width: 640px) { .carmo-var-row { grid-template-columns: minmax(0, 1fr); } }
