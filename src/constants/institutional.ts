@@ -15,7 +15,7 @@ export const PROJECT_INSTITUTIONAL_REFERENCE: {
   projectTitle: string;
   protocolCode: string;
   sponsor: string;
-  /** Referencia de coordinación científica de la herramienta (no sustituye la figura aprobada en el dictamen). */
+  /** Coordinación científica de la herramienta (no sustituye la figura aprobada en el dictamen; RG-03). María Letrán, co-coordinadora desde el 08/11/2026 por decisión del IP. */
   toolScientificCoordination: string;
   ethicsCommittee: string;
   ethicsApprovalCode: string;
@@ -29,7 +29,7 @@ export const PROJECT_INSTITUTIONAL_REFERENCE: {
     'CARMO: Evaluación de la experiencia del paciente con riesgo cardiovascular en el seguimiento con el Modelo de Atención Farmacéutica CMO',
   protocolCode: 'FEF-CARMO-2025',
   sponsor: 'Fundación Española de Farmacia Hospitalaria',
-  toolScientificCoordination: 'Ramón Alejandro Morillo Verdugo',
+  toolScientificCoordination: 'Ramón Alejandro Morillo Verdugo · María Letrán',
   ethicsCommittee: 'CEIm de Galicia (CEIm-G)',
   ethicsApprovalCode: '2025/330',
   ethicsApprovalDate: '2025-07-24',
