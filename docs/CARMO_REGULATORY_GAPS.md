@@ -100,3 +100,15 @@ Asesor de seguridad de Supabase tras aplicar:
 - Las tablas de `carmo_private` con RLS y sin políticas son intencionadas: no tienen acceso desde la API.
 - Las 3 funciones RPC `carmo_*` con `SECURITY DEFINER` son intencionadas y verifican la autorización dentro de la función.
 - Ajenos a CARMO, no modificados: 2 vistas `SECURITY DEFINER` de DERMAPEX (nivel ERROR) y la **protección frente a contraseñas filtradas desactivada** en Auth. Esta última conviene activarla, pero es un ajuste global del proyecto que afecta a los tres estudios.
+
+## H. Observaciones de la coordinación (documento CARMO_LETRAN, 23/11/2026)
+
+Cambios y verificación: `docs/CARMO_LETRAN_CAMBIOS.md`. Migraciones 14-16 **preparadas y probadas en local, pendientes de aprobación y aplicación en producción**.
+
+| Código | Pendiente | Situación en CARMO |
+|---|---|---|
+| RG-44 | Tratamiento analítico de las bajas por inclusión errónea o inelegibilidad (ITT, por protocolo, flujo de pacientes) | Baja = estado «retirado» con motivo `included_in_error` / `not_eligible`: **se conserva la semántica actual** (cuenta como incluido). Decidir y, si procede, excluir por motivo en el análisis |
+| RG-45 | ¿Se exportan el historial del consentimiento y los eventos de estado de la visita? | No: los conjuntos exportados no cambian |
+| RG-46 | Qué variables de la visita final se precargan desde la inicial y cuáles requieren nueva medición | Lista provisional (diabetes, hipertensión, soporte familiar, tabaco, cigarrillos/día y años fumando si el basal fuma). Validar; cambiarla exige migración |
+| RG-47 | Autocumplimentación electrónica del IEXPAC por el paciente (enlace) | No implementada: modalidad, responsable, recogida y tratamiento de las respuestas, y encaje con el protocolo/CEIm por confirmar. Relacionada con RG-32 |
+| RG-48 | Enunciados oficiales de IEXPAC-11, EVASAF y EQ-5D-3L; confirmación de la redacción de Morisky-Green | Faltan los textos; ver la tabla de `CARMO_LETRAN_CAMBIOS.md` §3 |

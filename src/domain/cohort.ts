@@ -45,9 +45,9 @@ export function firstPriorityByPatient(strats: Strat[]): Map<string, 1 | 2 | 3> 
 export type FollowUp = { tone: 'positive' | 'info' | 'warning' | 'neutral'; label: string };
 
 /** Situación del seguimiento del paciente (cabecera y listado). */
-export function followUpStatus(patientStatus: string, visits: Visit[], today: string): FollowUp {
+export function followUpStatus(patientStatus: string, visits: Visit[], today: string, statusReason?: string | null): FollowUp {
   if (patientStatus === 'completed') return { tone: 'positive', label: 'Seguimiento finalizado' };
-  if (patientStatus === 'withdrawn') return { tone: 'neutral', label: 'Retirado' };
+  if (patientStatus === 'withdrawn') return { tone: 'neutral', label: statusReason === 'included_in_error' || statusReason === 'not_eligible' ? 'Baja del paciente' : 'Retirado' };
   if (patientStatus === 'lost_to_followup') return { tone: 'neutral', label: 'Pérdida de seguimiento' };
   if (patientStatus === 'screening') return { tone: 'info', label: 'En selección' };
   if (patientStatus === 'not_included') return { tone: 'neutral', label: 'No incluido' };

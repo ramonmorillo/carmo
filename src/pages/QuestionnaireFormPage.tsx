@@ -6,15 +6,16 @@ import { LoadingState } from '../components/ui/LoadingState';
 import { Notice } from '../components/ui/Notice';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SaveStatus } from '../components/ui/SaveStatus';
-import { INSTRUMENT_UI, scoreQuestionnaire, scoreSummary, type InstrumentCode } from '../domain/questionnaires';
+import { INSTRUMENT_ITEM_TEXTS, INSTRUMENT_UI, scoreQuestionnaire, scoreSummary, type InstrumentCode } from '../domain/questionnaires';
 import { patientCode, ROLE_CAN, VISIT_LABELS } from '../domain/study';
 import { label, todayIso } from '../lib/format';
 import { useCarmoSession } from '../lib/session';
 import { useSave } from '../lib/useSave';
 import { carmo, carmoWrite, type Administration, type Instrument, type Patient, type Visit } from '../services/carmoData';
 
-// Formulario genérico de cuestionarios. El enunciado literal de los ítems NO se reproduce en este
-// repositorio público: se usa el instrumento autorizado (papel o versión aprobada) y aquí se registra el código.
+// Formulario genérico de cuestionarios. Los enunciados se muestran solo cuando el proyecto dispone de su texto
+// (INSTRUMENT_ITEM_TEXTS); si no, el ítem conserva su etiqueta numérica y se usa el instrumento autorizado
+// (papel o versión aprobada): aquí se registra el código de cada respuesta.
 const MODE_LABELS: Record<string, string> = { self: 'Autoadministrado', interviewer: 'Entrevista', assisted: 'Con ayuda' };
 
 export function QuestionnaireFormPage() {
@@ -85,6 +86,9 @@ export function QuestionnaireFormPage() {
         <Notice tone="warning" title="Cambios sin guardar"><div className="carmo-actions"><button className="button-secondary" onClick={() => blocker.reset?.()}>Seguir editando</button><button className="button-ghost" onClick={() => blocker.proceed?.()}>Salir sin guardar</button></div></Notice>
       ) : null}
       {closed ? <Notice tone="info">Visita cerrada: solo lectura.</Notice> : null}
+      {INSTRUMENT_ITEM_TEXTS[ui.code].status !== 'official' ? (
+        <Notice tone="warning" title={INSTRUMENT_ITEM_TEXTS[ui.code].status === 'missing' ? 'Enunciados oficiales no cargados' : 'Redacción pendiente de confirmar'}>{INSTRUMENT_ITEM_TEXTS[ui.code].note}</Notice>
+      ) : null}
       {ui.code === 'IEXPAC' && ctx.visit.visit_code === 'FINAL' && !ctx.existing && session.role !== 'external_evaluator' ? (
         <Notice tone="warning" title="Evaluador no conforme con el protocolo">El protocolo establece que el IEXPAC final lo cumplimenta un miembro de un equipo externo al equipo investigador. Si lo registra usted, quedará marcado como «no conforme».</Notice>
       ) : null}
@@ -97,7 +101,7 @@ export function QuestionnaireFormPage() {
         </div>
         <div className="carmo-items" style={{ marginTop: '1rem' }}>
           {ui.items.map(({ key: item, label: itemLabel }) => (
-            <div className="carmo-item" key={item} style={{ gridTemplateColumns: '14rem 1fr' }}>
+            <div className="carmo-item" key={item} style={{ gridTemplateColumns: 'minmax(14rem, 24rem) 1fr' }}>
               <strong>{itemLabel}</strong>
               <fieldset disabled={!canWrite} aria-label={itemLabel}>
                 {ui.options.map(({ value: code, label: text }) => (

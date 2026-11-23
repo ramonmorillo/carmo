@@ -116,3 +116,37 @@ describe('exportación de investigación', () => {
     expect(issues.map((r) => r[0])).toEqual(expect.arrayContaining(['datos_sinteticos', 'sin_visita_basal']));
   });
 });
+
+describe('compatibilidad de la exportación con los cambios de trazabilidad', () => {
+  it('una intervención «Sin visita» se exporta una sola vez, con visit_id vacío, junto a una con visita', async () => {
+    const db = fixture();
+    db.carmo_interventions = [
+      { id: 'i1', patient_id: P1, visit_id: null, catalog_code: 'A1', intervention_date: '2026-02-01', is_scheduled: false, modality: 'telematic', recipient: 'patient', acceptance: 'accepted', followup_status: 'open' },
+      { id: 'i2', patient_id: P1, visit_id: VB, catalog_code: 'A1', intervention_date: '2026-01-10', is_scheduled: true, modality: 'in_person', recipient: 'patient', acceptance: 'accepted', followup_status: 'closed' },
+    ];
+    const bundle = await runResearchExport(memorySource(db), options);
+    const [header, ...rows] = csvOf(bundle.zip, 'raw/carmo_interventions.csv');
+    expect(rows).toHaveLength(2);
+    const byId = Object.fromEntries(rows.map((r) => [r[header.indexOf('id')], r[header.indexOf('visit_id')]]));
+    expect(byId).toEqual({ i1: '', i2: VB });
+  });
+
+  it('la baja del paciente conserva la semántica actual: «retirado» sigue contando como incluido (ITT) y su motivo se exporta', async () => {
+    const db = fixture();
+    db.carmo_patients[1] = { ...db.carmo_patients[1], status: 'withdrawn', status_reason: 'included_in_error' };
+    const bundle = await runResearchExport(memorySource(db), options);
+    const [ph, ...prows] = csvOf(bundle.zip, 'analisis/pacientes.csv');
+    const p2 = prows.find((r) => r[ph.indexOf('study_code')] === '001-02')!;
+    expect(p2[ph.indexOf('status')]).toBe('withdrawn');
+    expect(p2[ph.indexOf('status_reason')]).toBe('included_in_error');
+    expect(p2[ph.indexOf('pob_itt')]).toBe('1');
+    expect(p2[ph.indexOf('pob_pp')]).toBe('0');
+  });
+
+  it('las columnas exportadas del consentimiento, las visitas y los pacientes no cambian (columnas nuevas de BD no se exportan)', async () => {
+    const bundle = await runResearchExport(memorySource(fixture()), options);
+    expect(csvOf(bundle.zip, 'raw/carmo_consents.csv')[0]).toEqual(['id', 'patient_id', 'document_version', 'signed_date', 'status', 'withdrawal_date', 'withdrawal_scope', 'future_use_choice']);
+    expect(csvOf(bundle.zip, 'raw/carmo_visits.csv')[0]).toEqual(['id', 'patient_id', 'visit_code', 'planned_date', 'actual_date', 'status', 'modality', 'responsible_id', 'record_state', 'revision']);
+    expect(csvOf(bundle.zip, 'raw/carmo_patients.csv')[0]).not.toContain('status_reason_detail');
+  });
+});

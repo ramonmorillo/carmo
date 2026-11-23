@@ -42,6 +42,8 @@ Ningún punto se da por cumplido sin evidencia (documento, acta o resultado de p
 - [ ] Cambio de una línea en `dermapex/db-tests/40_*` aprobado y fusionado (RG-26).
 - [ ] Prueba E2E en navegador contra un stack local (login, alta, inclusión, visita, IEXPAC, cierre, exportación) por cada rol.
 - [x] Validación de la importación SPSS con PSPP (`scripts/validate-export-spss.py`): 06/11/2026, GNU PSPP 2.0, paquete sintético en los dos dialectos (`,`/`.` y `;`/`,` con BOM); 19 sintaxis por dialecto (15 tablas raw + 4 de análisis, incluidas las columnas de CIMA y la revisión de medicación) ejecutadas sin errores ni avisos y comparadas celda a celda con el CSV. Repetir con una exportación real de validación antes del paso a producción.
+- [ ] Aprobación del IP y aplicación de las migraciones 14-16 (historial del consentimiento y baja, eventos de estado de la visita, precarga de la visita final), junto con el despliegue del frontend en la misma ventana. Probadas en local (`db-tests/30_carmo_traceability.sql`); ver `docs/CARMO_LETRAN_CAMBIOS.md`.
+- [ ] Decisiones RG-44 a RG-48 (docs/CARMO_REGULATORY_GAPS.md §H) y textos oficiales de los cuestionarios.
 - [ ] Prueba de recuperación de una copia de seguridad.
 - [ ] Formación de los usuarios y procedimiento de incidencias.
 - [ ] Pacientes sintéticos: decisión documentada (se conservan marcados o se eliminan por SQL administrativo con acta) antes de cambiar a `production`.

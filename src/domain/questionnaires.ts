@@ -1,6 +1,8 @@
 // Definición de interfaz y puntuación de los cuestionarios CARMO. Reglas idénticas a
-// carmo_private.questionnaire_scores (migración 04). Sin enunciados literales de los instrumentos
-// (repositorio público): se registran los códigos de respuesta del instrumento autorizado.
+// carmo_private.questionnaire_scores (migración 04). Los enunciados literales solo se muestran cuando el
+// proyecto dispone de su texto (ver INSTRUMENT_ITEM_TEXTS): nunca se inventan ni se parafrasean; si falta,
+// el ítem conserva su etiqueta numérica y se indica qué fuente hay que facilitar. Las claves de ítem
+// ('1'…'N'), las escalas, la puntuación y las respuestas históricas no dependen del texto mostrado.
 import { scoreIexpac } from './iexpac';
 
 export type InstrumentCode = 'IEXPAC' | 'EQ5D3L' | 'EVASAF' | 'MORISKY_GREEN';
@@ -42,8 +44,8 @@ export const INSTRUMENT_UI: Record<InstrumentCode, InstrumentUi> = {
     code: 'MORISKY_GREEN', title: 'Morisky-Green', vas: false, modes: ['self', 'interviewer', 'assisted'],
     description: 'Adherencia autorreferida (4 ítems sí/no). Adherente solo con No · Sí · No · No. Compruebe que el formulario sigue este orden.',
     items: [
-      { key: '1', label: 'P1 · olvido de tomas' }, { key: '2', label: 'P2 · toma a las horas indicadas' },
-      { key: '3', label: 'P3 · deja de tomarla si se encuentra bien' }, { key: '4', label: 'P4 · deja de tomarla si le sienta mal' },
+      { key: '1', label: 'P1 · ¿Olvida alguna vez?' }, { key: '2', label: 'P2 · ¿Toma la medicación a las horas indicadas?' },
+      { key: '3', label: 'P3 · ¿Deja de tomarla si se encuentra bien?' }, { key: '4', label: 'P4 · ¿Deja de tomarla si le sienta mal?' },
     ],
     options: [{ value: 1, label: 'Sí' }, { value: 0, label: 'No' }],
   },
@@ -97,3 +99,29 @@ export function storedScoreLabel(code: string, scores: { global?: number | null;
     default: return '—';
   }
 }
+
+/**
+ * Estado de los enunciados de cada instrumento en CARMO.
+ *  · official: texto de la versión aprobada y autorizada para el estudio (ninguno aún: no hay texto oficial en el proyecto).
+ *  · project_wording_unverified: redacción registrada en el proyecto (migración 04, reutilizada de DERMAPEX por decisión del IP), pendiente de confirmar contra el formulario autorizado y su licencia.
+ *  · missing: el proyecto no contiene el texto; se muestra «Ítem N» y se indica la fuente que hay que facilitar.
+ */
+export type ItemTextStatus = 'official' | 'project_wording_unverified' | 'missing';
+export const INSTRUMENT_ITEM_TEXTS: Record<InstrumentCode, { status: ItemTextStatus; note: string }> = {
+  IEXPAC: {
+    status: 'missing',
+    note: 'Faltan los enunciados de los 11 ítems (Ítem 1 … Ítem 11) y la redacción de las opciones. Fuente que hay que facilitar: el cuestionario IEXPAC-11 en la versión aprobada para el estudio, con la autorización de sus autores o del promotor.',
+  },
+  EQ5D3L: {
+    status: 'missing',
+    note: 'Se muestran solo los nombres de las 5 dimensiones. Faltan los enunciados de los 3 niveles de cada dimensión. Fuente que hay que facilitar: texto del EQ-5D-3L España (v2.0 autoadministrada / v1.0 entrevista) con el registro de uso de EuroQol para CARMO (RG-16).',
+  },
+  EVASAF: {
+    status: 'missing',
+    note: 'Faltan los enunciados de los 10 ítems (Ítem 1 … Ítem 10). Fuente que hay que facilitar: EVASAF (Farm Hosp 2015;39(3)) en la versión autorizada para el estudio.',
+  },
+  MORISKY_GREEN: {
+    status: 'project_wording_unverified',
+    note: 'Redacción tomada del registro del proyecto (reutilizada de DERMAPEX): pendiente de confirmar que coincide con el formulario autorizado, su orden y su licencia (RG-40).',
+  },
+};

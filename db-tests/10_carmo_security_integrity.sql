@@ -371,7 +371,7 @@ select carmo_test.expect_fail($$insert into public.carmo_observations (patient_i
 select carmo_test.expect_fail($$update public.carmo_questionnaire_administrations set administration_mode = 'interviewer', correction_reason = 'x', revision = 2 where instrument_code = 'IEXPAC'$$, 'no se corrige un cuestionario de una visita cerrada');
 select carmo_test.expect_fail($$update public.carmo_visits set record_state = 'draft' where visit_code = 'BASAL'$$, 'reabrir exige motivo');
 update public.carmo_visits set record_state = 'draft', reopen_reason = 'Corrección de la modalidad solicitada por monitorización' where visit_code = 'BASAL';
-select carmo_test.expect((select count(*) from public.carmo_visit_state_log) = 3, 'historial de estados: revisada, cerrada, reabierta');
+select carmo_test.expect((select count(*) from public.carmo_visit_state_log where kind = 'record_state') = 3, 'historial de estados del registro: revisada, cerrada, reabierta');
 commit;
 
 -- ── Tratamientos ────────────────────────────────────────────────────────────
@@ -494,7 +494,7 @@ select carmo_test.as_user('ca000000-0000-4000-8000-000000000003');
 select carmo_test.expect_fail($$update public.carmo_patients set status = 'completed' where screening_code = 'SEL-001-002'$$, 'no se cierra el seguimiento sin visita final realizada');
 select carmo_test.expect_fail($$update public.carmo_patients set status = 'withdrawn', status_reason = 'consent_withdrawn' where screening_code = 'SEL-001-002'$$,
   'retirada por consentimiento exige registrar la retirada del consentimiento');
-update public.carmo_consents set status = 'withdrawn', withdrawal_date = current_date, withdrawal_scope = 'stop_followup_data_pending_decision';
+update public.carmo_consents set status = 'withdrawn', withdrawal_date = current_date, withdrawal_scope = 'stop_followup_data_pending_decision', withdrawal_reason = 'Retirada solicitada por el paciente';
 update public.carmo_patients set status = 'withdrawn', status_reason = 'consent_withdrawn' where screening_code = 'SEL-001-002';
 select carmo_test.expect((select count(*) from public.carmo_observations o join public.carmo_patients p on p.id = o.patient_id where p.status = 'withdrawn') > 0,
   'los datos previos a la retirada se conservan (política de uso pendiente RG-10)');
