@@ -47,7 +47,20 @@ export const STATUS_REASON_LABELS = {
   transfer: 'Traslado',
   death: 'Fallecimiento',
   other: 'Otro',
+  included_in_error: 'Incluido por error',
 } as const;
+
+/** Motivos de la baja del paciente (incluido por error o inelegible). La baja usa el estado «Retirado» con estos motivos. */
+export const PATIENT_REMOVAL_REASONS = ['included_in_error', 'not_eligible'] as const;
+export const isPatientRemoval = (status: string, reason: string | null | undefined): boolean =>
+  status === 'withdrawn' && (PATIENT_REMOVAL_REASONS as readonly string[]).includes(reason ?? '');
+
+/** Etiqueta del estado del paciente: distingue la baja (incluido por error / inelegible) de la salida por retirada. */
+export function patientStatusLabel(status: string, reason: string | null | undefined): string {
+  if (isPatientRemoval(status, reason)) return `Baja del paciente · ${(STATUS_REASON_LABELS as Record<string, string>)[reason as string]}`;
+  if (status === 'withdrawn' && reason === 'consent_withdrawn') return 'Retirado · consentimiento retirado';
+  return (PATIENT_STATUS_LABELS as Record<string, string>)[status] ?? status;
+}
 
 export const ROLE_LABELS = {
   tech_admin: 'Administración técnica',

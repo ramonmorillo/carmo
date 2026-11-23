@@ -4,6 +4,9 @@
 import { supabase } from '../lib/supabase';
 import type { CarmoRole } from '../domain/study';
 import type { DbResponse } from '../domain/saveGuard';
+import type { ConsentEventRow } from '../domain/consentHistory';
+import type { PreloadRow } from '../domain/finalPreload';
+import type { VisitLogRow } from '../domain/visitEvents';
 
 export type Center = { id: string; code: string; name: string; study_number: number | null; participation_status: string; authorization_reference: string | null; is_active: boolean };
 export type Profile = { id: string; full_name: string | null; role: CarmoRole; is_active: boolean };
@@ -28,7 +31,10 @@ export type ObservationRow = {
 };
 export type EligibilityCriterion = { id: string; set_id: string; code: string; kind: 'inclusion' | 'exclusion'; ordinal: number; criterion_text: string; source_reference: string };
 export type EligibilityAnswer = { patient_id: string; criterion_id: string; is_met: boolean; verified_in_source: boolean };
-export type Consent = { id: string; patient_id: string; document_version: string; signed_date: string; investigator_id: string; status: string; withdrawal_date: string | null; withdrawal_scope: string | null; future_use_choice: string | null };
+export type Consent = {
+  id: string; patient_id: string; document_version: string; signed_date: string; investigator_id: string; status: string; withdrawal_date: string | null; withdrawal_scope: string | null;
+  withdrawal_reason: string | null; correction_reason: string | null; future_use_choice: string | null;
+};
 export type Instrument = { code: string; version: string; status: string; item_count: number; item_min: number; item_max: number; allowed_visits: string[]; notes: string | null };
 export type Administration = {
   id: string; visit_id: string; patient_id: string; instrument_code: string; instrument_version: string; status: string; not_done_reason: string | null;
@@ -113,6 +119,15 @@ export const carmo = {
   criteria: () => list<EligibilityCriterion>('carmo_eligibility_criteria'),
   answers: (patientId: string) => list<EligibilityAnswer>('carmo_eligibility_answers', (q) => q.eq('patient_id', patientId)),
   consents: (patientId: string) => list<Consent>('carmo_consents', (q) => q.eq('patient_id', patientId)),
+  consentEvents: (patientId: string) => list<ConsentEventRow>('carmo_consent_events', (q) => q.eq('patient_id', patientId).order('at').order('id')),
+  visitLog: (visitId: string) => list<VisitLogRow>('carmo_visit_state_log', (q) => q.eq('visit_id', visitId).order('at').order('id')),
+  preloads: (visitId: string) => list<PreloadRow>('carmo_observation_preloads', (q) => q.eq('visit_id', visitId).order('created_at')),
+  /** Precarga en bloque (acción explícita): devuelve cuántos valores quedan pendientes de verificar. */
+  async preloadFinalVisit(visitId: string): Promise<number> {
+    const { data, error } = await client().rpc('carmo_preload_final_visit', { p_visit_id: visitId });
+    if (error) throw new Error(error.message);
+    return Number(data ?? 0);
+  },
   instruments: () => list<Instrument>('carmo_instruments'),
   administrations: (patientId?: string) => list<Administration>('carmo_questionnaire_administrations', (q) => (patientId ? q.eq('patient_id', patientId) : q)),
   treatments: (patientId: string) => list<Treatment>('carmo_treatments', (q) => q.eq('patient_id', patientId)),

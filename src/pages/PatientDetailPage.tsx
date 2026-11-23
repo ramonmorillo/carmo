@@ -10,18 +10,23 @@ import { pairIexpac } from '../domain/iexpac';
 import { effectivePriority } from '../domain/cmoLabels';
 import { WINDOW_STATUS_LABELS, isOverdue, type WindowStatus } from '../domain/schedule';
 import {
-  INCLUSION_BLOCKER_LABELS, MODALITY_LABELS, PATIENT_STATUS_LABELS, PROGRAMMED_VISITS, RECORD_STATE_LABELS, ROLE_CAN,
-  FUTURE_USE_LABELS, STATUS_REASON_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS, patientCode, type VisitCode,
+  INCLUSION_BLOCKER_LABELS, MODALITY_LABELS, PROGRAMMED_VISITS, RECORD_STATE_LABELS, ROLE_CAN,
+  FUTURE_USE_LABELS, STATUS_REASON_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS, patientCode, patientStatusLabel, type VisitCode,
 } from '../domain/study';
+import { INTERVAL_UNAVAILABLE_LABELS, intervalFromBaseline } from '../domain/visitInterval';
+import type { ConsentEventRow } from '../domain/consentHistory';
 import { fmtDate, fmtNum, label, todayIso } from '../lib/format';
 import { useCarmoSession, type CarmoSession } from '../lib/session';
 import { useSave } from '../lib/useSave';
 import {
   carmo, carmoWrite, type Administration, type Consent, type Deviation, type Dispensation, type EligibilityAnswer, type EligibilityCriterion,
-  type CmoModel, type Instrument, type Intervention, type MedicationReview, type ObservationRow, type Variable,
+  type CmoModel, type Instrument, type Intervention, type InterventionCatalogItem, type MedicationReview, type ObservationRow, type Variable,
   type Patient, type Profile, type Stratification, type Treatment, type TreatmentEvent, type Visit, type VisitWindow,
 } from '../services/carmoData';
 import { MedicationPanel } from './MedicationPanel';
+import { ConsentPanel } from './ConsentPanel';
+import { PatientExitPanel } from './PatientExitPanel';
+import { PatientInterventions } from './PatientInterventions';
 import { PatientHeader } from '../components/ui/PatientHeader';
 import { CmoLevelBadge } from '../components/ui/CmoLevelBadge';
 import { currentPriorityByPatient, demographicsByPatient, followUpStatus, lastVisitDate, SEX_LABELS } from '../domain/cohort';
@@ -35,7 +40,7 @@ type Data = {
   blockers: string[]; administrations: Administration[]; deviations: Deviation[]; profiles: Profile[];
   treatments: Treatment[]; events: TreatmentEvent[]; dispensations: Dispensation[]; currentStrat: Stratification | null;
   strats: Stratification[]; observations: ObservationRow[]; variables: Variable[]; instruments: Instrument[]; models: CmoModel[];
-  reviews: MedicationReview[]; interventions: Intervention[];
+  reviews: MedicationReview[]; interventions: Intervention[]; consentEvents: ConsentEventRow[]; catalog: InterventionCatalogItem[];
 };
 
 export function PatientDetailPage() {
@@ -49,7 +54,7 @@ export function PatientDetailPage() {
       const patient = await carmo.patient(id);
       if (!patient) { setError('Paciente no encontrado o fuera de su ámbito.'); return; }
       const clinical = ROLE_CAN.readClinical(session.role);
-      const [visits, windows, criteria, answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations, strats, observations, variables, instruments, models, reviews, interventions] = await Promise.all([
+      const [visits, windows, criteria, answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations, strats, observations, variables, instruments, models, reviews, interventions, consentEvents, catalog] = await Promise.all([
         carmo.visits(id), carmo.windows(), carmo.criteria(), clinical ? carmo.answers(id) : [], clinical ? carmo.consents(id) : [],
         patient.status === 'screening' ? carmo.inclusionBlockers(id) : Promise.resolve([] as string[]),
         carmo.administrations(id), clinical ? carmo.deviations(id) : [], carmo.profiles(),
@@ -57,10 +62,11 @@ export function PatientDetailPage() {
         clinical ? carmo.stratifications(id) : [],
         clinical ? carmo.observations(id) : [], carmo.variables(), carmo.instruments(), clinical ? carmo.cmoModels() : [],
         clinical ? carmo.medicationReviews(id) : [], clinical ? carmo.interventions(id) : [],
+        clinical ? carmo.consentEvents(id) : [], clinical ? carmo.interventionCatalog() : [],
       ]);
       setData({ patient, visits, windows, criteria: criteria.filter((c) => c.set_id === patient.eligibility_set_id).sort((a, b) => a.ordinal - b.ordinal),
         answers, consents, blockers, administrations, deviations, profiles, treatments, events, dispensations,
-        currentStrat: strats.find((s) => !strats.some((n) => n.supersedes_id === s.id)) ?? null, strats, observations, variables, instruments, models, reviews, interventions });
+        currentStrat: strats.find((s) => !strats.some((n) => n.supersedes_id === s.id)) ?? null, strats, observations, variables, instruments, models, reviews, interventions, consentEvents, catalog });
     } catch (e) { setError((e as Error).message); }
   }, [id, session.role]);
   useEffect(() => { void load(); }, [load]);
@@ -75,7 +81,7 @@ export function PatientDetailPage() {
 
   const demo = demographicsByPatient(currentObservations(data.observations)).get(patient.id);
   const prio = currentPriorityByPatient(data.strats).get(patient.id) ?? null;
-  const fu = followUpStatus(patient.status, data.visits, todayIso());
+  const fu = followUpStatus(patient.status, data.visits, todayIso(), patient.status_reason);
   const lastDone = lastVisitDate(data.visits);
   const activeConsent = data.consents.find((c) => c.status === 'signed');
   const withdrawnConsent = data.consents.find((c) => c.status === 'withdrawn');
@@ -94,7 +100,8 @@ export function PatientDetailPage() {
         followup={fu}
         details={[
           { label: 'Centro', value: center ? `${center.code} · ${center.name}` : '—' },
-          { label: 'Estado en el estudio', value: label(PATIENT_STATUS_LABELS, patient.status) },
+          { label: 'Estado en el estudio', value: patientStatusLabel(patient.status, patient.status_reason) },
+          ...(patient.status_reason && patient.status !== 'included' && patient.status !== 'screening' ? [{ label: 'Motivo del estado', value: <>{label(STATUS_REASON_LABELS, patient.status_reason)}{patient.status_reason_detail ? ` · ${patient.status_reason_detail}` : ''}</> }] : []),
           { label: 'Inclusión', value: patient.inclusion_date ? fmtDate(patient.inclusion_date) : `cribado ${fmtDate(patient.screening_date)}` },
           ...(clinical ? [{ label: 'Consentimiento', value: activeConsent ? <StatusBadge tone="positive">Vigente</StatusBadge> : withdrawnConsent ? <StatusBadge tone="warning">Retirado</StatusBadge> : <StatusBadge tone="warning">No registrado</StatusBadge> }] : []),
           { label: 'IEXPAC basal → final', value: <>{fmtNum(paired.baseline)} → {fmtNum(paired.final)}{paired.paired ? ` (Δ ${fmtNum(paired.difference)})` : ''}</> },
@@ -108,11 +115,16 @@ export function PatientDetailPage() {
       />
       {ROLE_CAN.readClinical(session.role) ? <PendingPanel data={data} /> : null}
       {patient.status === 'screening' ? <InclusionSection data={data} session={session} reload={load} /> : null}
+      {clinical ? <ConsentPanel patient={patient} consents={data.consents} events={data.consentEvents} session={session} reload={load} profiles={data.profiles}
+        investigators={data.profiles.filter((p) => p.role === 'site_pi' || p.role === 'site_investigator' || (p.role === 'coordinator' && p.id === session.userId && session.memberships.some((m) => m.center_id === patient.center_id)))} /> : null}
       {patient.status !== 'screening' && patient.status !== 'not_included' ? <VisitsSection data={data} session={session} reload={load} /> : null}
+      {clinical && patient.status !== 'screening' && patient.status !== 'not_included' ? (
+        <PatientInterventions patientId={patient.id} interventions={data.interventions} visits={data.visits} catalog={data.catalog} canWrite={ROLE_CAN.writeClinical(session.role) && patient.status === 'included'} />
+      ) : null}
       {ROLE_CAN.readClinical(session.role) && patient.status !== 'screening' && patient.status !== 'not_included' ? (
         <MedicationPanel patient={patient} treatments={data.treatments} events={data.events} dispensations={data.dispensations} canWrite={ROLE_CAN.writeClinical(session.role) && patient.status === 'included'} reload={load} />
       ) : null}
-      {ROLE_CAN.writeClinical(session.role) && patient.status === 'included' ? <StudyExitSection data={data} reload={load} /> : null}
+      {ROLE_CAN.writeClinical(session.role) && patient.status === 'included' ? <PatientExitPanel patient={patient} reload={load} /> : null}
       {ROLE_CAN.readClinical(session.role) && patient.status !== 'screening' ? <DeviationsSection data={data} session={session} reload={load} /> : null}
       {session.role === 'coordinator' || session.role === 'monitor' ? <AuditHistory patientId={patient.id} /> : null}
     </div>
@@ -172,7 +184,7 @@ function InclusionSection({ data, session, reload }: { data: Data; session: Carm
       )}
       <h3>Consentimiento informado</h3>
       {data.consents.length > 0 ? (
-        <ul>{data.consents.map((c) => <li key={c.id}>Versión «{c.document_version}» · firmado {fmtDate(c.signed_date)} · {c.status === 'signed' ? 'vigente' : `retirado ${fmtDate(c.withdrawal_date)}`} · datos al terminar: {label(FUTURE_USE_LABELS, c.future_use_choice)}</li>)}</ul>
+        <p className="carmo-hint">Consentimiento registrado: puede rectificarse o retirarse en el panel «Consentimiento informado» (con historial).</p>
       ) : canWrite ? (
         <form className="carmo-form" onSubmit={saveConsent}>
           <label>Versión documental de la HIP/CI<input required maxLength={80} value={consent.document_version} onChange={(e) => setConsent({ ...consent, document_version: e.target.value })} /></label>
@@ -229,6 +241,8 @@ function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSe
     stratifications: data.strats, interventionCount: data.interventions.filter((i) => i.visit_id === v.id).length,
     review: data.reviews.find((r) => r.visit_id === v.id) ?? null, followUp, today: todayIso(), cmoAvailable: Boolean(validated),
   });
+  // Tiempo real desde la visita inicial (días de calendario entre fechas efectivas; no depende de la etiqueta S12/S24…).
+  const intervalOf = (v: Visit) => intervalFromBaseline(v, data.visits);
   const stratOf = (v: Visit) => data.strats.filter((s) => s.visit_id === v.id && !data.strats.some((n) => n.supersedes_id === s.id))[0];
 
   return (
@@ -252,6 +266,9 @@ function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSe
                 <span className={v.status === 'done' ? 'timeline-node is-done' : v.status === 'cancelled' || v.status === 'not_done' ? 'timeline-node is-cancelled' : 'timeline-node'} aria-hidden="true" />
                 <Link className="timeline-title" to={`/visits/${v.id}`}>{label(VISIT_LABELS, v.visit_code)}</Link>
                 <span className="timeline-date">{fmtDate(v.actual_date ?? v.planned_date)} · {label(VISIT_STATUS_LABELS, v.status)}</span>
+                {(() => { const iv = intervalOf(v); return iv.available
+                  ? <span className="timeline-meta" data-testid="timeline-interval">{iv.days === 0 ? 'Día 0 · visita inicial' : `Día ${iv.days} desde la inicial`}</span>
+                  : <span className="timeline-meta carmo-hint" data-testid="timeline-interval" title={INTERVAL_UNAVAILABLE_LABELS[iv.reason]}>Intervalo no disponible</span>; })()}
                 <span className="timeline-meta">{s ? <CmoLevelBadge level={effectivePriority(s)} score={s.total_score} variant="short" pending={s.validation_status === 'pending'} /> : <span className="carmo-hint">Sin estratificar</span>}</span>
               </li>
             );
@@ -259,7 +276,7 @@ function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSe
         </ol>
       ) : null}
       <div className="table-wrap"><table className="carmo-table">
-        <thead><tr><th>Visita</th><th>Fecha</th><th>Estado</th>{clinical ? <><th>Variables</th><th>Medicación</th><th>CMO</th><th>Cuestionarios</th><th className="num">Interv.</th><th>Completitud</th></> : null}<th>Registro</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Visita</th><th>Fecha</th><th className="num">Días desde la visita inicial</th><th>Estado</th>{clinical ? <><th>Variables</th><th>Medicación</th><th>CMO</th><th>Cuestionarios</th><th className="num">Interv.</th><th>Completitud</th></> : null}<th>Registro</th><th>Acciones</th></tr></thead>
         <tbody>{visits.map((v) => {
           const w = win(v.id);
           const reqs = clinical ? reqsOf(v) : [];
@@ -272,6 +289,7 @@ function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSe
               <td className="strong"><Link to={`/visits/${v.id}`}>{label(VISIT_LABELS, v.visit_code)}</Link></td>
               <td className="numeric">{fmtDate(v.actual_date ?? v.planned_date)}{!v.actual_date && v.planned_date ? <><br /><span className="carmo-hint">prevista</span></> : null}
                 {w ? <><br /><span className="carmo-hint">Ventana: {WINDOW_STATUS_LABELS[w.window_status as WindowStatus] ?? w.window_status}</span></> : null}</td>
+              <td className="num" data-testid="interval-cell">{(() => { const iv = intervalOf(v); return iv.available ? iv.days : <span className="cell-muted" title={INTERVAL_UNAVAILABLE_LABELS[iv.reason]}>Intervalo no disponible</span>; })()}</td>
               <td>{label(VISIT_STATUS_LABELS, v.status)}{isOverdue(v.planned_date, v.status, todayIso()) ? <> <StatusBadge tone="warning">Vencida</StatusBadge></> : null}<br /><span className="carmo-hint">{label(MODALITY_LABELS, v.modality)}</span></td>
               {clinical && v.status !== 'done' ? <>
                 <td colSpan={4}><span className="carmo-hint">{v.status === 'planned' ? 'Visita aún no realizada: los bloques se completan al realizarla.' : 'Visita no realizada o anulada.'}</span></td>
@@ -304,39 +322,6 @@ function VisitsSection({ data, session, reload }: { data: Data; session: CarmoSe
         </div>
       ) : null}
       <p className="carmo-hint">Fechas previstas según el calendario versionado del protocolo (inclusión + días).</p>
-      <SaveStatus state={save.state} />
-    </section>
-  );
-}
-
-function StudyExitSection({ data, reload }: { data: Data; reload: () => Promise<void> }) {
-  const save = useSave();
-  const [exit, setExit] = useState<'withdrawn' | 'lost_to_followup'>('withdrawn');
-  const [reason, setReason] = useState('consent_withdrawn');
-  const [withdrawalDate, setWithdrawalDate] = useState(todayIso());
-  const active = data.consents.find((c) => c.status === 'signed');
-
-  return (
-    <section className="card">
-      <h2>Cierre del seguimiento y salida del estudio</h2>
-      <p className="carmo-hint">Diferencia entre cierre de visita (en cada visita), cierre del seguimiento (tras la visita final realizada) y salida anticipada (retirada o pérdida). Los datos recogidos se conservan; su uso tras una retirada está pendiente de definir con promotor y CEIm (RG-10).</p>
-      <div className="carmo-actions">
-        <button type="button" className="button-link" disabled={save.saving} onClick={() => void save.run(() => carmoWrite.update('carmo_patients', { status: 'completed' }, { id: data.patient.id }), reload)}>Cerrar seguimiento (visita final realizada)</button>
-      </div>
-      <div className="carmo-form" style={{ marginTop: '0.75rem' }}>
-        <label>Salida<select value={exit} onChange={(e) => setExit(e.target.value as typeof exit)}><option value="withdrawn">Retirada</option><option value="lost_to_followup">Pérdida de seguimiento</option></select></label>
-        <label>Motivo<select value={reason} onChange={(e) => setReason(e.target.value)}>{(['consent_withdrawn', 'investigator_decision', 'transfer', 'death', 'other'] as const).map((k) => <option key={k} value={k}>{STATUS_REASON_LABELS[k]}</option>)}</select></label>
-        {reason === 'consent_withdrawn' && active ? (
-          <label>Fecha de retirada del consentimiento<input type="date" max={todayIso()} value={withdrawalDate} onChange={(e) => setWithdrawalDate(e.target.value)} /></label>
-        ) : null}
-        <div><button type="button" className="button-secondary" disabled={save.saving} onClick={async () => {
-          if (reason === 'consent_withdrawn' && active) {
-            const ok = await save.run(() => carmoWrite.update('carmo_consents', { status: 'withdrawn', withdrawal_date: withdrawalDate, withdrawal_scope: 'stop_followup_data_pending_decision' }, { id: active.id }));
-            if (!ok) return;
-          }
-          await save.run(() => carmoWrite.update('carmo_patients', { status: exit, status_reason: reason }, { id: data.patient.id }), reload);
-        }}>Registrar salida</button></div>
-      </div>
       <SaveStatus state={save.state} />
     </section>
   );

@@ -16,6 +16,12 @@ import {
 import {
   blockingBeforeClose, REQ_STATUS_LABELS, SECTION_LABELS, SECTION_ORDER, visitRequirements, type Requirement, type SectionKey,
 } from '../domain/visitRequirements';
+import { VisitEventHistory } from '../components/ui/VisitEventHistory';
+import { visitEvents, type VisitLogRow } from '../domain/visitEvents';
+import { INTERVAL_UNAVAILABLE_LABELS, intervalFromBaseline } from '../domain/visitInterval';
+import {
+  confirmationPayload, pendingPreload, pendingPreloadCount, PRELOAD_STATUS_LABELS, preloadAvailability, resolvedPreload, type PreloadRow,
+} from '../domain/finalPreload';
 import { fmtDate, label, todayIso } from '../lib/format';
 import { useCarmoSession } from '../lib/session';
 import { useSave } from '../lib/useSave';
@@ -29,6 +35,7 @@ type Data = {
   visit: Visit; patient: Patient; variables: Variable[]; observations: ObservationRow[]; evolution: Evolution | null; instruments: Instrument[];
   administrations: Administration[]; profiles: Profile[]; treatments: Treatment[]; events: TreatmentEvent[]; dispensations: Dispensation[];
   review: MedicationReview | null; strats: Stratification[]; interventions: Intervention[]; catalog: InterventionCatalogItem[]; models: CmoModel[];
+  visits: Visit[]; log: VisitLogRow[]; preloads: PreloadRow[];
 };
 
 const CHECK_ICON: Record<string, string> = { done: '✓', pending: '!', recommended: '◐', optional: '·', not_applicable: '–' };
@@ -45,16 +52,17 @@ export function VisitPage() {
       if (!visit) { setError('Visita no encontrada o fuera de su ámbito.'); return; }
       const clinical = ROLE_CAN.readClinical(session.role);
       const pid = visit.patient_id;
-      const [patient, variables, observations, evolution, instruments, administrations, profiles, treatments, events, dispensations, reviews, strats, interventions, catalog, models] = await Promise.all([
+      const [patient, variables, observations, evolution, instruments, administrations, profiles, treatments, events, dispensations, reviews, strats, interventions, catalog, models, visits, log, preloads] = await Promise.all([
         carmo.patient(pid), carmo.variables(), clinical ? carmo.observations(pid) : [],
         clinical ? carmo.evolution(visit.id) : null, carmo.instruments(), carmo.administrations(pid), carmo.profiles(),
         clinical ? carmo.treatments(pid) : [], clinical ? carmo.treatmentEvents(pid) : [], clinical ? carmo.dispensations(pid) : [],
         clinical ? carmo.medicationReviews(pid) : [], clinical ? carmo.stratifications(pid) : [], clinical ? carmo.interventions(pid) : [],
         clinical ? carmo.interventionCatalog() : [], clinical ? carmo.cmoModels() : [],
+        carmo.visits(pid), clinical ? carmo.visitLog(visit.id) : [], clinical ? carmo.preloads(visit.id) : [],
       ]);
       if (!patient) { setError('Paciente no accesible.'); return; }
       setData({ visit, patient, variables, observations, evolution, instruments, administrations, profiles, treatments, events, dispensations,
-        review: reviews.find((r) => r.visit_id === visit.id) ?? null, strats, interventions, catalog, models });
+        review: reviews.find((r) => r.visit_id === visit.id) ?? null, strats, interventions, catalog, models, visits, log, preloads });
     } catch (e) { setError((e as Error).message); }
   }, [visitId, session.role]);
   useEffect(() => { void load(); }, [load]);
@@ -70,7 +78,9 @@ export function VisitPage() {
     variables: data.variables, observations: data.observations, administrations: data.administrations, instruments: data.instruments,
     stratifications: data.strats, interventionCount: data.interventions.filter((i) => i.visit_id === visit.id).length, review: data.review,
     followUp: (validated?.definition.followUp as Record<string, { restratifyMonths: number | null }> | undefined) ?? null, today: todayIso(), cmoAvailable: Boolean(validated),
+    pendingPreloads: pendingPreloadCount(data.preloads, new Set(currentObservations(data.observations).filter((o) => o.visit_id === visit.id).map((o) => o.variable_code))),
   }) : [];
+  const interval = intervalFromBaseline(visit, data.visits);
   const visible: SectionKey[] = clinical ? SECTION_ORDER : ['datos', 'cuestionarios', ...(ROLE_CAN.close(session.role) ? ['cierre' as SectionKey] : [])];
   const requested = params.get('seccion') as SectionKey | null;
   const firstPending = reqs.find((r) => r.status === 'pending')?.key;
@@ -81,7 +91,7 @@ export function VisitPage() {
   return (
     <div className="page-stack">
       <PageHeader eyebrow={<Link to={`/patients/${patient.id}`}>{patientCode(patient)}</Link>} title={label(VISIT_LABELS, visit.visit_code)}
-        description={<>Prevista {fmtDate(visit.planned_date)} · efectiva {fmtDate(visit.actual_date)} · {label(VISIT_STATUS_LABELS, visit.status)} · registro <StatusBadge tone={closed ? 'neutral' : 'info'}>{label(RECORD_STATE_LABELS, visit.record_state)}</StatusBadge></>} />
+        description={<>Prevista {fmtDate(visit.planned_date)} · efectiva {fmtDate(visit.actual_date)} · {interval.available ? <span data-testid="visit-interval">{interval.days === 0 ? 'día 0 (visita inicial)' : `día ${interval.days} desde la visita inicial`}</span> : <span data-testid="visit-interval" title={INTERVAL_UNAVAILABLE_LABELS[interval.reason]}>intervalo desde la inicial no disponible</span>} · {label(VISIT_STATUS_LABELS, visit.status)} · registro <StatusBadge tone={closed ? 'neutral' : 'info'}>{label(RECORD_STATE_LABELS, visit.record_state)}</StatusBadge></>} />
       {clinical ? <div className="carmo-actions"><Link className="button-link button-secondary" to={`/visits/${visit.id}/informe`}>Informe imprimible de la visita</Link></div> : null}
       {closed ? <Notice tone="info" title="Visita cerrada">Los datos de esta visita están bloqueados. El IP del centro o la coordinación pueden reabrirla indicando el motivo; la reapertura queda registrada.</Notice> : null}
       {clinical ? <ChecklistCard reqs={reqs} go={go} /> : null}
@@ -94,7 +104,10 @@ export function VisitPage() {
           })}
         </div>
         {reqOf(tab) ? <p className="carmo-hint" style={{ marginTop: 0 }}><strong>{REQ_STATUS_LABELS[reqOf(tab)!.status]}.</strong> {reqOf(tab)!.detail}</p> : null}
-        {tab === 'datos' ? <VisitForm data={data} canWrite={ROLE_CAN.writeClinical(session.role) && !closed} reload={load} userId={session.userId} /> : null}
+        {tab === 'datos' ? <>
+          <VisitForm data={data} canWrite={ROLE_CAN.writeClinical(session.role) && !closed} reload={load} userId={session.userId} />
+          {clinical ? <><h3>Historial de la visita</h3><p className="carmo-hint">Anulaciones, no realizaciones, reaperturas y cierres, con el motivo guardado en cada momento.</p><VisitEventHistory events={visitEvents(data.log)} /></> : null}
+        </> : null}
         {tab === 'variables' && visit.status !== 'cancelled' ? <ObservationsSection data={data} canWrite={canWrite} reload={load} /> : null}
         {tab === 'medicacion' ? <MedicationPanel patient={patient} treatments={data.treatments} events={data.events} dispensations={data.dispensations}
           canWrite={canWrite && patient.status === 'included'} reload={load} visit={visit} review={data.review} /> : null}
@@ -232,18 +245,42 @@ function QuestionnaireLinks({ data }: { data: Data }) {
 }
 
 function ObservationsSection({ data, canWrite, reload }: { data: Data; canWrite: boolean; reload: () => Promise<void> }) {
+  const [preloadMsg, setPreloadMsg] = useState<string | null>(null);
+  const [preloading, setPreloading] = useState(false);
   const vars = data.variables.filter((v) => v.allowed_visits.includes(data.visit.visit_code) && v.status !== 'retired');
   const visitObs = data.observations.filter((o) => o.visit_id === data.visit.id || (o.visit_id === null && data.visit.visit_code === 'BASAL' && o.temporal_context === 'history_prior_inclusion'));
   const current = currentObservations(visitObs);
   const sections = [...new Set(vars.map((v) => v.section))];
+  const availability = preloadAvailability(data.visit, data.visits, canWrite);
+  const pendingCount = pendingPreloadCount(data.preloads, new Set(current.map((o) => o.variable_code)));
+  const doPreload = async () => {
+    setPreloading(true); setPreloadMsg(null);
+    try {
+      const n = await carmo.preloadFinalVisit(data.visit.id);
+      setPreloadMsg(n > 0 ? `Se han precargado ${n} valor(es) de la visita inicial, pendientes de verificar.` : 'No hay valores que precargar: los campos comparables ya tienen dato en esta visita o no constan en la visita inicial.');
+      await reload();
+    } catch (e) { setPreloadMsg((e as Error).message); } finally { setPreloading(false); }
+  };
   const SECTION_LABELS: Record<string, string> = { cv_history: 'Antecedentes cardiovasculares', cv_risk_factor: 'Factores de riesgo', anthropometric: 'Antropometría', laboratory: 'Analítica', cv_event: 'Eventos cardiovasculares', demographic: 'Demográficas', sociosanitary: 'Sociosanitarias', pharmacotherapy: 'Farmacoterapia', other: 'Otras' };
   return (
     <div>
       <Notice tone="warning">Diccionario PROVISIONAL: variables del resumen del protocolo, pendientes de verificar contra el protocolo v3.0. Las variables sin dominio definido están bloqueadas. Los datos nunca se sobrescriben: una corrección crea un registro nuevo con motivo.</Notice>
+      {data.visit.visit_code === 'FINAL' ? (
+        <div className="carmo-preload-panel" aria-label="Precarga desde la visita inicial">
+          <div className="carmo-actions">
+            <button type="button" className="button-secondary" disabled={!availability.enabled || preloading} title={availability.reason ?? undefined} onClick={() => void doPreload()}>Cargar valores de la visita inicial</button>
+            {!availability.enabled && availability.reason ? <span className="carmo-hint">{availability.reason}</span> : null}
+          </div>
+          <p className="carmo-hint">Copia solo en los campos vacíos los antecedentes y la situación declarativa comparables (diabetes, hipertensión, soporte familiar, tabaco). No copia fechas de medición ni valores que requieren nueva medición (peso, altura, LDL-c, colesterol no-HDL). Los valores copiados quedan «pendientes de verificar»: no cuentan como datos finales ni completan la visita hasta que los confirme («sin cambios») o los actualice. La visita inicial no se modifica.</p>
+          {pendingCount > 0 ? <Notice tone="warning" title={`${pendingCount} valor(es) precargado(s) pendiente(s) de verificar`}>No cuentan como datos finales: confirme o actualice cada uno.</Notice> : null}
+          {preloadMsg ? <Notice tone="info">{preloadMsg}</Notice> : null}
+        </div>
+      ) : null}
       {sections.map((s) => (
         <div key={s} className="carmo-section"><h3>{SECTION_LABELS[s] ?? s}</h3>
           {vars.filter((v) => v.section === s).map((v) => (
-            <VariableRow key={v.code} variable={v} visit={data.visit} patient={data.patient} current={current.filter((o) => o.variable_code === v.code)} all={visitObs} canWrite={canWrite} reload={reload} />
+            <VariableRow key={v.code} variable={v} visit={data.visit} patient={data.patient} current={current.filter((o) => o.variable_code === v.code)} all={visitObs} canWrite={canWrite} reload={reload}
+              preloads={data.preloads} />
           ))}
         </div>
       ))}
@@ -259,12 +296,36 @@ function display(o: ObservationRow, v: Variable): string {
   return o.value_date ?? '—';
 }
 
-function VariableRow({ variable: v, visit, patient, current, all, canWrite, reload }: { variable: Variable; visit: Visit; patient: Patient; current: ObservationRow[]; all: ObservationRow[]; canWrite: boolean; reload: () => Promise<void> }) {
+function preloadDisplay(p: PreloadRow, v: Variable): string {
+  if (p.value_boolean !== null) return p.value_boolean ? 'Sí' : 'No';
+  if (p.value_numeric !== null) return `${p.value_numeric} ${p.unit ?? ''}`.trim();
+  if (p.value_text !== null) return v.allowed_values?.[p.value_text] ?? p.value_text;
+  return p.value_date ?? '—';
+}
+
+function VariableRow({ variable: v, visit, patient, current, all, canWrite, reload, preloads }: { variable: Variable; visit: Visit; patient: Patient; current: ObservationRow[]; all: ObservationRow[]; canWrite: boolean; reload: () => Promise<void>; preloads: PreloadRow[] }) {
   const save = useSave();
   const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const pending = current.length === 0 ? pendingPreload(preloads, v.code) : null;
+  const resolved = current.length > 0 ? resolvedPreload(preloads, v.code) : null;
   const defaultContext = v.allowed_contexts.includes(visit.visit_code === 'BASAL' ? 'baseline' : 'follow_up') ? (visit.visit_code === 'BASAL' ? 'baseline' : 'follow_up') : v.allowed_contexts[0];
   const [f, setF] = useState({ value: '', unit: v.units?.[0] ?? '', missing: '', observed_date: visit.actual_date ?? todayIso(), data_source: 'clinical_record', temporal_context: defaultContext, correction_reason: '', supersedes: '' });
   const blocked = v.status === 'blocked';
+  const [confirm, setConfirm] = useState({ observed_date: visit.actual_date ?? todayIso(), data_source: 'clinical_record' });
+
+  const confirmUnchanged = (e: FormEvent) => {
+    e.preventDefault();
+    if (!pending) return;
+    void save.run(() => carmoWrite.insert('carmo_observations', confirmationPayload(pending, { visitId: visit.id, observedDate: confirm.observed_date, dataSource: confirm.data_source, temporalContext: defaultContext })), async () => { setConfirming(false); await reload(); });
+  };
+  const discard = () => { if (pending) void save.run(() => carmoWrite.update('carmo_observation_preloads', { status: 'discarded' }, { id: pending.id }), reload); };
+  const startUpdate = () => {
+    if (!pending) return;
+    setConfirming(false);
+    setF({ ...f, supersedes: '', value: pending.value_boolean !== null ? String(pending.value_boolean) : pending.value_numeric !== null ? String(pending.value_numeric) : pending.value_text ?? pending.value_date ?? '', unit: pending.unit ?? f.unit });
+    setOpen(true);
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -287,14 +348,37 @@ function VariableRow({ variable: v, visit, patient, current, all, canWrite, relo
     <div className="carmo-item carmo-var-row">
       <div><strong>{v.label}</strong>{blocked ? <><br /><StatusBadge tone="warning">Bloqueada</StatusBadge></> : null}<p className="carmo-hint">{v.notes}</p></div>
       <div>
-        {current.length === 0 ? <span className="text-muted">Sin registrar</span> : current.map((o) => (
+        {pending ? (
+          <div className="carmo-preload" data-testid="preload-row">
+            <StatusBadge tone="warning">{PRELOAD_STATUS_LABELS.pending_verification}</StatusBadge>{' '}
+            <strong>{preloadDisplay(pending, v)}</strong> <span className="text-muted">· no cuenta como dato final</span>
+            {canWrite && !blocked && !open ? (
+              <div className="carmo-actions">
+                {!confirming ? <button type="button" className="button-link button-sm" onClick={() => setConfirming(true)}>Confirmar sin cambios</button> : null}
+                <button type="button" className="button-secondary button-sm" onClick={startUpdate}>Actualizar</button>
+                <button type="button" className="button-ghost button-sm" disabled={save.saving} onClick={discard}>Descartar</button>
+              </div>
+            ) : null}
+            {confirming ? (
+              <form className="carmo-form" onSubmit={confirmUnchanged} aria-label="Confirmar sin cambios">
+                <label>Fecha de la verificación<input type="date" required max={todayIso()} value={confirm.observed_date} onChange={(e) => setConfirm({ ...confirm, observed_date: e.target.value })} /></label>
+                <label>Origen<select value={confirm.data_source} onChange={(e) => setConfirm({ ...confirm, data_source: e.target.value })}>{Object.entries(DATA_SOURCE_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+                <p className="carmo-hint span-all">Confirma que el valor de la visita inicial sigue siendo válido en esta visita. Se registra como dato final.</p>
+                <div className="carmo-actions span-all"><button className="button-link button-sm" type="submit" disabled={save.saving}>Confirmar valor sin cambios</button><button type="button" className="button-ghost button-sm" onClick={() => setConfirming(false)}>Cancelar</button></div>
+              </form>
+            ) : null}
+          </div>
+        ) : null}
+        {current.length === 0 && !pending ? <span className="text-muted">Sin registrar</span> : null}
+        {current.length > 0 && resolved ? <p className="carmo-hint" data-testid="preload-resolved">{PRELOAD_STATUS_LABELS[resolved.status]} (visita inicial: {preloadDisplay(resolved, v)}).</p> : null}
+        {current.map((o) => (
           <div key={o.id}>
             <strong>{display(o, v)}</strong> <span className="text-muted">· {fmtDate(o.observed_date)} · {label(DATA_SOURCE_LABELS, o.data_source)} · {label(TEMPORAL_CONTEXT_LABELS, o.temporal_context)}</span>
             {o.supersedes_id ? <details><summary className="carmo-hint">Historial de correcciones</summary><ul>{correctionChain(all, o.id).slice(1).map((p) => <li key={p.id}>{display(p, v)} · registrado {p.recorded_at.slice(0, 10)}</li>)}</ul><p className="carmo-hint">Motivo de la última corrección: {o.correction_reason}</p></details> : null}
             {canWrite && !blocked ? <button type="button" className="button-ghost button-sm" onClick={() => { setF({ ...f, supersedes: o.id }); setOpen(true); }}>Corregir</button> : null}
           </div>
         ))}
-        {canWrite && !blocked && !open ? <button type="button" className="button-ghost button-sm" onClick={() => { setF({ ...f, supersedes: '' }); setOpen(true); }}>{current.length ? 'Añadir otra medición' : 'Registrar'}</button> : null}
+        {canWrite && !blocked && !open && !pending ? <button type="button" className="button-ghost button-sm" onClick={() => { setF({ ...f, supersedes: '' }); setOpen(true); }}>{current.length ? 'Añadir otra medición' : 'Registrar'}</button> : null}
         {open ? (
           <form className="carmo-form" onSubmit={submit}>
             <label>Dato ausente<select value={f.missing} onChange={(e) => setF({ ...f, missing: e.target.value })}><option value="">No (registrar valor)</option>{Object.entries(MISSING_REASON_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>

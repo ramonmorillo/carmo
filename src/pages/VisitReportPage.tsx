@@ -16,6 +16,10 @@ import {
   DATA_SOURCE_LABELS, MISSING_REASON_LABELS, MODALITY_LABELS, RECORD_STATE_LABELS, ROLE_CAN, TEMPORAL_CONTEXT_LABELS, VISIT_LABELS, VISIT_STATUS_LABELS, patientCode,
 } from '../domain/study';
 import { REQ_STATUS_LABELS, visitRequirements } from '../domain/visitRequirements';
+import { VisitEventHistory } from '../components/ui/VisitEventHistory';
+import { visitEvents as buildVisitHistory, type VisitLogRow } from '../domain/visitEvents';
+import { INTERVAL_UNAVAILABLE_LABELS, intervalFromBaseline } from '../domain/visitInterval';
+import { pendingPreloadCount, type PreloadRow } from '../domain/finalPreload';
 import { fmtDate, label, todayIso } from '../lib/format';
 import { useCarmoSession } from '../lib/session';
 import {
@@ -27,6 +31,7 @@ type Data = {
   visit: Visit; patient: Patient; variables: Variable[]; observations: ObservationRow[]; evolution: Evolution | null; instruments: Instrument[];
   administrations: Administration[]; profiles: Profile[]; treatments: Treatment[]; events: TreatmentEvent[]; review: MedicationReview | null;
   strats: Stratification[]; interventions: Intervention[]; catalog: InterventionCatalogItem[]; models: CmoModel[];
+  visits: Visit[]; log: VisitLogRow[]; preloads: PreloadRow[];
 };
 
 const SECTION_LABELS: Record<string, string> = {
@@ -46,14 +51,14 @@ export function VisitReportPage() {
       const visit = await carmo.visit(visitId);
       if (!visit) { setError('Visita no encontrada o fuera de su ámbito.'); return; }
       const pid = visit.patient_id;
-      const [patient, variables, observations, evolution, instruments, administrations, profiles, treatments, events, reviews, strats, interventions, catalog, models] = await Promise.all([
+      const [patient, variables, observations, evolution, instruments, administrations, profiles, treatments, events, reviews, strats, interventions, catalog, models, visits, log, preloads] = await Promise.all([
         carmo.patient(pid), carmo.variables(), carmo.observations(pid), carmo.evolution(visit.id), carmo.instruments(), carmo.administrations(pid), carmo.profiles(),
         carmo.treatments(pid), carmo.treatmentEvents(pid), carmo.medicationReviews(pid), carmo.stratifications(pid), carmo.interventions(pid),
-        carmo.interventionCatalog(), carmo.cmoModels(),
+        carmo.interventionCatalog(), carmo.cmoModels(), carmo.visits(pid), carmo.visitLog(visit.id), carmo.preloads(visit.id),
       ]);
       if (!patient) { setError('Paciente no accesible.'); return; }
       setData({ visit, patient, variables, observations, evolution, instruments, administrations, profiles, treatments, events,
-        review: reviews.find((r) => r.visit_id === visit.id) ?? null, strats, interventions, catalog, models });
+        review: reviews.find((r) => r.visit_id === visit.id) ?? null, strats, interventions, catalog, models, visits, log, preloads });
     } catch (e) { setError((e as Error).message); }
   }, [visitId, session.role]);
   useEffect(() => { void load(); }, [load]);
@@ -73,6 +78,9 @@ export function VisitReportPage() {
     stratifications: data.strats, interventionCount: data.interventions.filter((i) => i.visit_id === visit.id).length, review: data.review,
     followUp: (validated?.definition.followUp as Record<string, { restratifyMonths: number | null }> | undefined) ?? null, today: todayIso(), cmoAvailable: Boolean(validated),
   });
+  const interval = intervalFromBaseline(visit, data.visits);
+  const events_ = buildVisitHistory(data.log);
+  const reasonedStatus = visit.status === 'cancelled' || visit.status === 'not_done';
 
   // Variables: las observaciones vigentes de la visita (y, en la visita inicial, los antecedentes previos a la inclusión).
   const visitObs = currentObservations(data.observations.filter((o) => o.visit_id === visit.id
@@ -137,12 +145,22 @@ export function VisitReportPage() {
           <dl className="carmo-report-facts">
             <div><dt>Fecha de la visita</dt><dd>{fmtDate(visit.actual_date)}{visit.actual_date ? '' : ` (prevista ${fmtDate(visit.planned_date)})`}</dd></div>
             <div><dt>Estado</dt><dd>{label(VISIT_STATUS_LABELS, visit.status)}</dd></div>
+            {reasonedStatus ? <div><dt>{visit.status === 'cancelled' ? 'Motivo de la anulación' : 'Motivo de la no realización'}</dt><dd data-testid="report-status-reason">{visit.status_reason ?? <em>no registrado</em>}</dd></div> : null}
+            <div><dt>Días desde la visita inicial</dt><dd data-testid="report-interval">{interval.available ? interval.days : <em title={INTERVAL_UNAVAILABLE_LABELS[interval.reason]}>Intervalo no disponible</em>}</dd></div>
             <div><dt>Modalidad</dt><dd>{label(MODALITY_LABELS, visit.modality)}</dd></div>
             <div><dt>Profesional responsable</dt><dd>{responsible}</dd></div>
             <div><dt>Registro</dt><dd>{label(RECORD_STATE_LABELS, visit.record_state)}</dd></div>
             <div><dt>Inclusión en el estudio</dt><dd>{fmtDate(patient.inclusion_date)}</dd></div>
           </dl>
         </section>
+
+        {events_.length > 0 ? (
+          <section>
+            <h2>Historial de la visita</h2>
+            <p className="carmo-report-text">Anulaciones, no realizaciones, reaperturas y cierres, con el motivo guardado en cada momento (los registros anteriores a su implantación pueden no tenerlo).</p>
+            <VisitEventHistory events={events_} report />
+          </section>
+        ) : null}
 
         <section>
           <h2>Completitud de la visita</h2>
@@ -151,6 +169,9 @@ export function VisitReportPage() {
 
         <section>
           <h2>Variables clínicas</h2>
+          {pendingPreloadCount(data.preloads, new Set(visitObs.map((o) => o.variable_code))) > 0 ? (
+            <p className="carmo-report-text"><strong>Atención:</strong> hay {pendingPreloadCount(data.preloads, new Set(visitObs.map((o) => o.variable_code)))} valor(es) de la visita inicial precargado(s) aún pendientes de verificar; no figuran en esta tabla porque no son datos finales.</p>
+          ) : null}
           {obsRows.length === 0 ? <p className="carmo-report-text">Sin variables registradas en esta visita.</p> : (
             <table><thead><tr><th>Bloque</th><th>Variable</th><th>Valor</th><th>Fecha</th><th>Origen</th><th>Contexto</th></tr></thead><tbody>
               {obsRows.map((o) => <tr key={o.id}><td>{SECTION_LABELS[varOf(o.variable_code)?.section ?? ''] ?? ''}</td><td>{varOf(o.variable_code)?.label ?? o.variable_code}{o.supersedes_id ? ' (corregido)' : ''}</td>

@@ -11,6 +11,7 @@ import { patientCode, ROLE_CAN, VISIT_LABELS } from '../domain/study';
 import { fmtDate, label, todayIso } from '../lib/format';
 import { useCarmoSession } from '../lib/session';
 import { useSave } from '../lib/useSave';
+import { interventionVisitLabel } from './PatientInterventions';
 import { carmo, carmoWrite, type Intervention, type InterventionCatalogItem, type Patient, type Stratification, type Visit } from '../services/carmoData';
 
 export function InterventionsPage() {
@@ -85,8 +86,9 @@ export function InterventionsPage() {
         <p className="carmo-hint">Programadas: {d.items.filter((i) => i.is_scheduled).length} · no programadas: {d.items.filter((i) => !i.is_scheduled).length} · presenciales: {d.items.filter((i) => i.modality === 'in_person').length} · telemáticas: {d.items.filter((i) => i.modality === 'telematic').length}</p>
       </section>
       <section className="card"><h2>Registradas ({d.items.length})</h2>
-        <div className="table-wrap"><table className="carmo-table"><thead><tr><th>Fecha</th><th>Paciente</th><th>Actuación</th><th>Tipo</th><th>Modalidad</th><th>Destinatario</th><th>Aceptación</th><th>Seguimiento</th></tr></thead><tbody>
+        <div className="table-wrap"><table className="carmo-table"><thead><tr><th>Fecha</th><th>Paciente</th><th>Visita</th><th>Actuación</th><th>Tipo</th><th>Modalidad</th><th>Destinatario</th><th>Aceptación</th><th>Seguimiento</th></tr></thead><tbody>
           {d.items.map((i) => <tr key={i.id}><td>{fmtDate(i.intervention_date)}</td><td><Link to={`/patients/${i.patient_id}`}>{code(i.patient_id)}</Link></td>
+            <td data-testid="intervention-visit">{interventionVisitLabel(i, d.visits)}</td>
             <td>{i.catalog_code} · {cat(i.catalog_code)?.label ?? ''}</td><td>{i.is_scheduled ? 'Programada' : 'No programada'}</td><td>{i.modality === 'in_person' ? 'Presencial' : 'Telemática'}</td>
             <td>{label(RECIPIENT_LABELS, i.recipient)}</td><td>{label(ACCEPTANCE_LABELS, i.acceptance)}</td><td>{i.followup_status === 'open' ? 'Abierto' : 'Cerrado'}</td></tr>)}
         </tbody></table></div>

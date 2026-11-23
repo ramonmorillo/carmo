@@ -33,6 +33,8 @@ export type VisitContext = {
   interventionCount: number; review: Review | null; followUp: FollowUp | null; today: string;
   /** Hay un modelo CMO validado (sin él no se puede estratificar y el bloque no se exige; igual que la BD). */
   cmoAvailable: boolean;
+  /** Valores de la visita inicial precargados en la final y aún pendientes de verificar: NO cuentan como registrados. */
+  pendingPreloads?: number;
 };
 
 function addMonthsIso(iso: string, months: number): string {
@@ -71,7 +73,7 @@ export function visitRequirements(visit: Visit, ctx: VisitContext): Requirement[
     const missing = expected.filter((v) => !recorded.has(v.code));
     if (expected.length === 0) na('variables', 'El protocolo no prevé variables en esta visita.');
     else req.push({ key: 'variables', label: SECTION_LABELS.variables, status: missing.length === 0 ? 'done' : 'pending',
-      detail: missing.length === 0 ? `${expected.length}/${expected.length} registradas (valor o motivo de ausencia).` : `${expected.length - missing.length}/${expected.length} registradas. Faltan: ${missing.map((m) => m.label).join(', ')}.` });
+      detail: missing.length === 0 ? `${expected.length}/${expected.length} registradas (valor o motivo de ausencia).` : `${expected.length - missing.length}/${expected.length} registradas. Faltan: ${missing.map((m) => m.label).join(', ')}.${ctx.pendingPreloads ? ` ${ctx.pendingPreloads} valor(es) de la visita inicial precargado(s) siguen pendientes de verificar y no cuentan como registrados.` : ''}` });
 
     // 3. Medicación: revisión en cada visita programada (en contactos extraordinarios, si hubo cambios)
     req.push({ key: 'medicacion', label: SECTION_LABELS.medicacion,
