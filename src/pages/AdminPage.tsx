@@ -17,15 +17,17 @@ export function AdminPage() {
   if (error) return <ErrorState message={error} />;
   if (!d) return <LoadingState label="Cargando…" />;
   const center = (id: string) => session.centers.find((c) => c.id === id)?.code ?? '—';
+  // Los centros que no participan (closed) se conservan en la base de datos para trazabilidad, pero no se listan.
+  const participatingCenters = session.centers.filter((c) => c.participation_status !== 'closed');
   const STATUS: Record<string, string> = { pending_authorization: 'Pendiente de autorización', authorized: 'Autorizado', closed: 'Cerrado' };
   return (
     <div className="page-stack">
       <PageHeader eyebrow="Administración" title="Centros, profesionales y roles" description="Alta de cuentas y asignación de centros por SQL administrativo (carmo_private.provision_user / assign_center), nunca desde el navegador." />
       <Notice tone="info">Ningún centro se activa por defecto: la relación de centros debe contrastarse con la autorización efectiva para participar (RG-07). Modo de datos actual: <strong>{session.dataMode ?? '—'}</strong>.</Notice>
       <section className="card"><h2>Centros</h2>
-        {session.centers.length === 0 ? <p className="text-muted">Ningún centro registrado.</p> : (
+        {participatingCenters.length === 0 ? <p className="text-muted">Ningún centro registrado.</p> : (
           <table className="carmo-table"><thead><tr><th>Código</th><th>Nombre</th><th>Nº</th><th>Participación</th><th>Referencia</th><th>Activo</th></tr></thead><tbody>
-            {session.centers.map((c) => <tr key={c.id}><td>{c.code}</td><td>{c.name}</td><td>{c.study_number ?? '—'}</td><td>{STATUS[c.participation_status] ?? c.participation_status}</td><td>{c.authorization_reference ?? '—'}</td><td>{c.is_active ? 'Sí' : 'No'}</td></tr>)}
+            {participatingCenters.map((c) => <tr key={c.id}><td>{c.code}</td><td>{c.name}</td><td>{c.study_number ?? '—'}</td><td>{STATUS[c.participation_status] ?? c.participation_status}</td><td>{c.authorization_reference ?? '—'}</td><td>{c.is_active ? 'Sí' : 'No'}</td></tr>)}
           </tbody></table>
         )}
       </section>
